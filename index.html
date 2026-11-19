@@ -2722,5 +2722,63 @@
             init();
         })();
     </script>
+    <script>
+(function () {
+  const DB_URL = "https://spotify-tierlist-31a71-default-rtdb.europe-west1.firebasedatabase.app/tierlist.json";
+  const isViewMode = new URLSearchParams(window.location.search).get("view") === "1";
+  if (isViewMode) return;
+
+  // Sayfadaki mevcut JSON Yedek Yükle input'unu bulur
+  function getJsonInput() {
+    return document.querySelector('input[type="file"][accept*="json"]');
+  }
+
+  async function pullFromCloud(silent = false) {
+    try {
+      const res = await fetch(DB_URL + "?t=" + Date.now());
+      if (!res.ok) throw new Error("Bulut okunamadı");
+      const data = await res.json();
+      if (!data || !Array.isArray(data.tracks) || data.tracks.length === 0) {
+        if (!silent) alert("Bulutta kayıtlı liste bulunamadı.");
+        return;
+      }
+
+      // Veriyi sanki JSON yedek dosyası seçilmiş gibi uygulamaya aktarır
+      const input = getJsonInput();
+      if (!input) return;
+      const file = new File([JSON.stringify(data)], "cloud_sync.json", { type: "application/json" });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+
+      if (!silent) alert("Buluttan güncellendi (" + data.tracks.length + " şarkı).");
+    } catch (err) {
+      if (!silent) alert("Buluttan çekilirken hata oluştu: " + err.message);
+    }
+  }
+
+  // Sağ alta "Buluttan Güncelle" butonu ekler
+  const btn = document.createElement("button");
+  btn.textContent = "☁️ Buluttan Güncelle";
+  btn.style.cssText =
+    "position:fixed;bottom:16px;right:16px;z-index:9999;padding:10px 14px;" +
+    "border-radius:999px;border:1px solid #2e2e2e;background:#181818;color:#fff;" +
+    "font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.45);";
+  btn.onclick = () => pullFromCloud(false);
+  document.body.appendChild(btn);
+
+  // Eğer cihazda (ör. mobilde) henüz hiç kayıtlı veri yoksa açılışta otomatik buluttan çeker
+  window.addEventListener("load", () => {
+    const hasLocalTracks = Object.keys(localStorage).some(k => {
+      const v = localStorage.getItem(k);
+      return v && v.includes('"tracks"') && v.includes('"trackId"');
+    });
+    if (!hasLocalTracks) {
+      setTimeout(() => pullFromCloud(true), 400);
+    }
+  });
+})();
+</script>
 </body>
 </html>
