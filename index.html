@@ -1,0 +1,2726 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Tier List Player (SDK Edition)</title>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                    colors: {
+                        app: {
+                            bg: '#0f1115',
+                            card: '#181b22',
+                            cardLight: '#212530',
+                            cardHover: '#282d3a',
+                            border: '#2a2f3d',
+                            muted: '#9ca3af',
+                            green: '#1db954',
+                            greenHover: '#1ed760'
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        body {
+            background-color: #0f1115;
+            color: #ffffff;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Özel kaydırma çubuğu */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f1115;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a2f3d;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3d4457;
+        }
+
+        /* Özel Seek Bar ve Ses Slider'ı */
+        input[type="range"].sp-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"].sp-slider::-webkit-slider-runnable-track {
+            height: 6px;
+            border-radius: 9999px;
+            background: #2a2f3d;
+        }
+        input[type="range"].sp-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 14px;
+            width: 14px;
+            border-radius: 9999px;
+            background: #ffffff;
+            margin-top: -4px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+            transition: transform 0.12s ease, background-color 0.12s ease;
+        }
+        input[type="range"].sp-slider:hover::-webkit-slider-thumb {
+            transform: scale(1.18);
+            background: #1db954;
+        }
+        input[type="range"].sp-slider::-moz-range-track {
+            height: 6px;
+            border-radius: 9999px;
+            background: #2a2f3d;
+        }
+        input[type="range"].sp-slider::-moz-range-thumb {
+            height: 14px;
+            width: 14px;
+            border: none;
+            border-radius: 9999px;
+            background: #ffffff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Animasyonlar */
+        @keyframes cardIn {
+            0% { opacity: 0; transform: translateY(8px) scale(0.99); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-card-in {
+            animation: cardIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes toastSlide {
+            0% { opacity: 0; transform: translateY(14px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-toast {
+            animation: toastSlide 0.22s ease-out forwards;
+        }
+
+        .key-flash {
+            transform: scale(0.94) !important;
+            filter: brightness(1.22);
+        }
+
+        .glow-emerald {
+            box-shadow: 0 0 18px rgba(0, 230, 118, 0.18);
+        }
+        .glow-emerald:hover {
+            box-shadow: 0 0 24px rgba(0, 230, 118, 0.35);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-app-bg text-white antialiased selection:bg-app-green selection:text-black">
+
+    <!-- ====================================================================
+         ÜST GEZİNME ÇUBUĞU (HEADER)
+         ==================================================================== -->
+    <header class="sticky top-0 z-30 bg-app-bg/95 backdrop-blur-md border-b border-app-border">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <!-- Logo ve Başlık -->
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-9 h-9 rounded-xl bg-app-green flex items-center justify-center shadow-lg shadow-app-green/20 shrink-0">
+                    <svg class="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-sm sm:text-base font-extrabold tracking-tight truncate">Spotify Tier List</h1>
+                        <span class="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-app-green/15 text-app-green border border-app-green/30">SDK Edition</span>
+                    </div>
+                    <p id="headerSubtitle" class="text-xs text-app-muted truncate max-w-[180px] sm:max-w-xs">Tam Şarkı &amp; Sarma Destekli</p>
+                </div>
+            </div>
+
+            <!-- Sağ Kontroller: Sekmeler ve Spotify Durumu -->
+            <div class="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                <!-- Sekmeler (Playlist yüklüyken görünür) -->
+                <div id="headerNavWrapper" class="hidden items-center gap-2">
+                    <nav class="flex bg-app-card p-1 rounded-xl border border-app-border">
+                        <button id="tabRateBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-app-cardLight text-white">
+                            Değerlendir
+                        </button>
+                        <button id="tabTierBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-app-muted hover:text-white flex items-center gap-1.5">
+                            <span>Tier List</span>
+                            <span id="tabRatedBadge" class="text-[11px] bg-app-bg px-1.5 py-0.5 rounded-md text-app-muted font-bold">0</span>
+                        </button>
+                    </nav>
+
+                    <button id="headerResetBtn" type="button" title="Yeni Liste Yükle / Sıfırla" class="p-2 rounded-xl bg-app-card hover:bg-red-500/15 hover:text-red-400 border border-app-border text-app-muted transition-colors" aria-label="Sıfırla">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </button>
+
+                    <!-- Bulut Senkronizasyon Durumu ve İzleme Linki -->
+                    <div id="cloudSyncPill" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-app-card border border-app-border text-[11px] font-semibold text-app-muted" title="Firebase Bulut Senkronizasyonu">
+                        <span id="cloudSyncDot" class="w-2 h-2 rounded-full bg-zinc-500 shrink-0"></span>
+                        <span id="cloudSyncText">Bulut Hazır</span>
+                    </div>
+
+                    <button id="btnCopyViewerLink" type="button" title="Arkadaşın için salt-okunur izleme linkini kopyala" class="px-2.5 py-1.5 rounded-xl bg-app-card hover:bg-app-cardLight border border-app-border text-xs font-semibold text-app-green flex items-center gap-1.5 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                        </svg>
+                        <span class="hidden md:inline">İzleme Linki Kopyala</span>
+                    </button>
+                </div>
+
+                <!-- İzleyici Modu Üst Kontrolleri (?view=1) -->
+                <div id="viewerHeaderControls" class="hidden items-center gap-2">
+                    <span class="px-2.5 py-1.5 rounded-xl bg-app-green/15 border border-app-green/30 text-app-green text-xs font-bold">İzleme Modu</span>
+                    <button id="btnViewerRefresh" type="button" class="px-3 py-1.5 rounded-xl bg-app-card hover:bg-app-cardLight border border-app-border text-xs font-semibold text-white flex items-center gap-1.5 transition-colors active:scale-95">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <span>Yenile</span>
+                    </button>
+                </div>
+
+                <!-- Spotify Bağlantı Durum Butonu -->
+                <button id="headerSpotifyBtn" type="button" class="px-3 py-2 rounded-xl bg-app-card hover:bg-app-cardLight border border-app-border transition-colors flex items-center gap-2 text-xs font-semibold">
+                    <span id="sdkStatusDot" class="w-2.5 h-2.5 rounded-full bg-zinc-500 shrink-0"></span>
+                    <span id="sdkStatusText" class="truncate max-w-[130px] sm:max-w-none">Spotify Bağlı Değil</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ====================================================================
+         ANA İÇERİK ALANI
+         ==================================================================== -->
+    <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-6 sm:py-8">
+
+        <!-- ================================================================
+             1. EKRAN: BAŞLANGIÇ / LİSTE YÜKLEME EKRANI
+             ================================================================ -->
+        <section id="startView" class="max-w-4xl mx-auto space-y-6">
+            <!-- Başlık -->
+            <div class="text-center space-y-2">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-app-green/15 text-app-green border border-app-green/30">
+                    Tam Şarkı + İleri/Geri Sarma + 5'li Puanlama
+                </span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Playlistini Hızlıca Sınıflandır</h2>
+                <p class="text-sm sm:text-base text-app-muted max-w-xl mx-auto">
+                    Spotify hesabını bağlayarak <strong class="text-white">tam şarkı dinle</strong>, istediğin saniyeye sar ve şarkıları <strong class="text-white">1 (Very Bad)</strong> ile <strong class="text-white">5 (Very Good)</strong> arasında hızlıca puanla.
+                </p>
+            </div>
+
+            <!-- Kaldığın Yerden Devam Et Banner'ı (Kayıtlı oturum varsa görünür) -->
+            <div id="resumeSessionBanner" class="hidden p-4 sm:p-5 rounded-2xl bg-app-card border border-app-green/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <div class="text-xs font-bold uppercase tracking-wider text-app-green mb-0.5">Kayıtlı Oturum Bulundu</div>
+                    <h3 id="resumePlaylistTitle" class="text-base font-bold text-white">Playlist Adı</h3>
+                    <p id="resumePlaylistStats" class="text-xs text-app-muted mt-0.5">0 / 0 şarkı puanlandı</p>
+                </div>
+                <button id="btnResumeSession" type="button" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-app-green hover:bg-app-greenHover text-black font-extrabold text-sm transition-transform active:scale-95 shrink-0">
+                    Kaldığın Yerden Devam Et
+                </button>
+            </div>
+
+            <!-- Spotify SDK Bağlantı Banner'ı -->
+            <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[#1db954]/15 via-app-card to-app-card border border-[#1db954]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex items-start gap-3.5">
+                    <div class="w-10 h-10 rounded-xl bg-app-green/20 text-app-green flex items-center justify-center shrink-0 mt-0.5">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.72 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm sm:text-base font-bold text-white">Spotify Premium ile Tam Şarkı &amp; Sarma</h3>
+                        <p id="startSdkBannerDesc" class="text-xs text-app-muted mt-0.5 leading-relaxed">
+                            30 saniye sınırını kaldırmak, seek bar ile ileri/geri sarmak ve doğrudan Spotify playlist linki çekmek için bağlan.
+                        </p>
+                    </div>
+                </div>
+                <button id="bannerSpotifyBtn" type="button" class="w-full sm:w-auto shrink-0 px-4 py-2.5 rounded-xl bg-app-green hover:bg-app-greenHover text-black font-bold text-xs sm:text-sm transition-transform active:scale-95">
+                    Spotify Bağlantısını Aç
+                </button>
+            </div>
+
+            <!-- 2 Sütunlu Yükleme Kartları -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Kart 1: Spotify Playlist Linki ile Çek -->
+                <div class="p-5 rounded-2xl bg-app-card border border-app-border flex flex-col justify-between gap-4">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-lg bg-app-green/15 text-app-green flex items-center justify-center text-xs font-extrabold shrink-0">1</span>
+                                <h3 class="text-sm font-bold text-white">Spotify Playlist Linki ile Çek</h3>
+                            </div>
+                            <span id="apiImportBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-app-cardLight text-app-muted shrink-0">Spotify Bağla</span>
+                        </div>
+                        <p class="text-xs text-app-muted leading-relaxed">
+                            Spotify bağlantısı açıkken 500+ şarkılık listeleri bile tek tıkla doğrudan çekebilirsin.
+                        </p>
+                        <input id="playlistUrlInput" type="text" placeholder="https://open.spotify.com/playlist/..." class="w-full px-3.5 py-2.5 rounded-xl bg-app-bg border border-app-border focus:border-app-green focus:outline-none text-sm text-white placeholder-app-muted/60 transition-colors">
+                        <p id="playlistFetchStatus" class="text-xs text-app-green min-h-[16px]"></p>
+                    </div>
+                    <button id="btnFetchPlaylist" type="button" class="w-full py-2.5 px-4 rounded-xl bg-app-green hover:bg-app-greenHover disabled:opacity-50 disabled:cursor-not-allowed text-black font-extrabold text-sm transition-transform active:scale-95">
+                        Playlisti Çek
+                    </button>
+                </div>
+
+                <!-- Kart 2: Exportify CSV Yükle -->
+                <div class="p-5 rounded-2xl bg-app-card border border-app-border flex flex-col justify-between gap-4">
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center text-xs font-extrabold shrink-0">2</span>
+                            <h3 class="text-sm font-bold text-white">Exportify CSV Yükle</h3>
+                        </div>
+                        <p class="text-xs text-app-muted leading-relaxed">
+                            Spotify girişi yapmadan da <strong class="text-white">Exportify</strong>'dan indirdiğin <code class="px-1 py-0.5 rounded bg-app-bg text-white">.csv</code> dosyasını yükleyebilirsin.
+                        </p>
+                    </div>
+
+                    <label id="csvDropZone" for="csvFileInput" class="flex flex-col items-center justify-center gap-2 p-5 rounded-xl border-2 border-dashed border-app-border hover:border-app-green/70 bg-app-bg/60 hover:bg-app-bg cursor-pointer transition-all text-center">
+                        <svg class="w-7 h-7 text-app-muted" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        <div class="text-xs font-semibold text-white">CSV dosyasını sürükle veya tıkla</div>
+                        <div class="text-[11px] text-app-muted">Track URI, Track Name, Artist, Album desteklenir</div>
+                    </label>
+                    <input id="csvFileInput" type="file" accept=".csv,text/csv" class="hidden">
+                </div>
+            </div>
+
+            <!-- Kart 3: JSON Yedek / Örnek Liste -->
+            <div class="p-4 sm:p-5 rounded-2xl bg-app-card border border-app-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-sm font-bold text-white">JSON Yedek / Örnek Liste</h3>
+                    <p class="text-xs text-app-muted mt-0.5">
+                        Daha önce indirdiğin JSON yedeğini geri yükleyebilir veya 8 şarkılık örnek listeyle hemen test edebilirsin.
+                    </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto shrink-0">
+                    <button id="btnStartJsonImport" type="button" class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-app-cardLight hover:bg-app-cardHover border border-app-border text-xs sm:text-sm font-semibold transition-all active:scale-95">
+                        JSON Yedek Yükle
+                    </button>
+                    <button id="btnLoadSample" type="button" class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-app-cardLight hover:bg-app-cardHover border border-app-border text-xs sm:text-sm font-semibold transition-all active:scale-95">
+                        Örnek Liste (8 Şarkı)
+                    </button>
+                </div>
+            </div>
+            <input id="jsonFileInput" type="file" accept=".json,application/json" class="hidden">
+        </section>
+
+        <!-- ================================================================
+             2. EKRAN: DEĞERLENDİRME MODU (PLAYER + 5'Lİ PUANLAMA)
+             ================================================================ -->
+        <section id="rateView" class="hidden max-w-2xl mx-auto space-y-4">
+
+            <!-- İlerleme Çubuğu ve Sıralı / Karışık Kontrolü -->
+            <div class="p-4 rounded-2xl bg-app-card border border-app-border space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2.5">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-app-muted">İlerleme</span>
+                        <span id="progressSummary" class="text-xs sm:text-sm font-bold text-white bg-app-cardLight px-2.5 py-0.5 rounded-lg">0 / 0 (0%)</span>
+                    </div>
+
+                    <!-- Sıralı / Karışık Geçişi -->
+                    <div class="flex items-center gap-1.5">
+                        <div class="inline-flex bg-app-bg p-0.5 rounded-xl border border-app-border">
+                            <button id="btnModeSequential" type="button" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-app-cardLight text-white">
+                                Sıralı
+                            </button>
+                            <button id="btnModeShuffle" type="button" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-app-muted hover:text-white flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>
+                                </svg>
+                                <span>Karışık</span>
+                            </button>
+                        </div>
+
+                        <button id="btnReshuffle" type="button" title="Kalan Şarkıları Yeniden Karıştır" class="hidden px-2.5 py-1.5 rounded-xl bg-app-cardLight hover:bg-app-cardHover border border-app-border text-xs font-semibold text-app-green transition-all active:scale-95 items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <span class="hidden sm:inline">Yeniden Karıştır</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- İlerleme Çubuğu -->
+                <div class="w-full h-2 bg-app-bg rounded-full overflow-hidden">
+                    <div id="progressBarFill" class="h-full bg-app-green rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+
+                <!-- Canlı 5'li Sayaçlar -->
+                <div class="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+                    <span class="px-2 py-0.5 rounded-md bg-[#ef4444]/15 text-[#ef4444]">1 VB: <span id="miniStat1">0</span></span>
+                    <span class="px-2 py-0.5 rounded-md bg-[#f97316]/15 text-[#f97316]">2 Bad: <span id="miniStat2">0</span></span>
+                    <span class="px-2 py-0.5 rounded-md bg-[#eab308]/15 text-[#eab308]">3 Mid: <span id="miniStat3">0</span></span>
+                    <span class="px-2 py-0.5 rounded-md bg-[#22c55e]/15 text-[#22c55e]">4 Good: <span id="miniStat4">0</span></span>
+                    <span class="px-2 py-0.5 rounded-md bg-[#00e676]/15 text-[#00e676]">5 VG: <span id="miniStat5">0</span></span>
+                    <span class="ml-auto px-2 py-0.5 rounded-md bg-app-cardLight text-app-muted">Kalan: <span id="miniStatRemaining" class="text-white">0</span></span>
+                </div>
+            </div>
+
+            <!-- Aktif Şarkı Kartı -->
+            <div id="activeTrackCard" class="p-5 sm:p-6 rounded-2xl bg-app-card border border-app-border shadow-2xl space-y-5">
+                <!-- Şarkı Üst Bilgisi -->
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-app-bg border border-app-border overflow-hidden shrink-0 flex items-center justify-center shadow-lg">
+                        <img id="trackCoverImg" src="" alt="Albüm Kapağı" class="hidden w-full h-full object-cover">
+                        <svg id="trackCoverFallback" class="w-8 h-8 text-app-muted/50" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                        </svg>
+                    </div>
+
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-1.5 mb-1">
+                            <span id="trackOrderBadge" class="text-xs font-bold text-app-green bg-app-green/10 px-2 py-0.5 rounded-md">#1</span>
+                            <span id="trackCurrentRatingBadge" class="hidden text-[11px] font-bold px-2 py-0.5 rounded-md"></span>
+                            <span id="trackAlbumName" class="text-xs text-app-muted truncate">Albüm Adı</span>
+                        </div>
+                        <h2 id="trackTitle" class="text-lg sm:text-2xl font-extrabold tracking-tight text-white truncate">Şarkı Adı</h2>
+                        <p id="trackArtistName" class="text-sm text-app-muted font-medium truncate">Sanatçı</p>
+                    </div>
+
+                    <a id="trackExternalLink" href="#" target="_blank" rel="noopener noreferrer" title="Spotify'da Aç" class="shrink-0 p-2.5 rounded-xl bg-app-cardLight hover:bg-app-cardHover border border-app-border text-app-muted hover:text-app-green transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <!-- MOD A: SPOTIFY WEB PLAYBACK SDK TAM OYNATICI -->
+                <div id="sdkPlayerPanel" class="hidden p-4 rounded-2xl bg-app-bg border border-app-border space-y-4">
+                    <!-- Seek Bar ve Zaman -->
+                    <div>
+                        <input id="seekBar" type="range" min="0" max="1000" value="0" class="sp-slider w-full">
+                        <div class="flex items-center justify-between text-[11px] font-mono text-app-muted mt-1">
+                            <span id="timeElapsed">0:00</span>
+                            <span id="sdkPlayerStateText" class="font-sans text-app-green font-medium">Hazır</span>
+                            <span id="timeDuration">0:00</span>
+                        </div>
+                    </div>
+
+                    <!-- Oynatma Kontrolleri ve Ses -->
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <button id="btnSeekBack" type="button" title="10 saniye geri (←)" class="px-3 py-2 rounded-xl bg-app-card hover:bg-app-cardLight border border-app-border text-xs font-bold flex items-center gap-1 transition-all active:scale-95">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/>
+                                </svg>
+                                <span>-10 sn</span>
+                            </button>
+
+                            <button id="btnPlayPause" type="button" title="Oynat / Duraklat (Space)" class="w-12 h-12 rounded-full bg-app-green hover:bg-app-greenHover text-black flex items-center justify-center shadow-lg shadow-app-green/25 transition-all active:scale-95">
+                                <svg id="iconPlay" class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z"/>
+                                </svg>
+                                <svg id="iconPause" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                                </svg>
+                            </button>
+
+                            <button id="btnSeekForward" type="button" title="10 saniye ileri (→)" class="px-3 py-2 rounded-xl bg-app-card hover:bg-app-cardLight border border-app-border text-xs font-bold flex items-center gap-1 transition-all active:scale-95">
+                                <span>+10 sn</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Ses Seviyesi -->
+                        <div class="flex items-center gap-2 min-w-[120px] flex-1 sm:flex-initial max-w-[160px]">
+                            <svg class="w-4 h-4 text-app-muted shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                            </svg>
+                            <input id="volumeSlider" type="range" min="0" max="100" value="70" class="sp-slider w-full">
+                        </div>
+                    </div>
+
+                    <!-- Başlangıç Saniyesi (Nakarat) ve Otomatik Oynat -->
+                    <div class="pt-3 border-t border-app-border flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="text-[11px] font-semibold text-app-muted mr-1">Başlangıç Saniyesi:</span>
+                            <button type="button" data-offset="0" class="offset-pill px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors">0s</button>
+                            <button type="button" data-offset="15" class="offset-pill px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors">15s</button>
+                            <button type="button" data-offset="30" class="offset-pill px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors">30s</button>
+                            <button type="button" data-offset="45" class="offset-pill px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors">45s</button>
+                            <button type="button" data-offset="60" class="offset-pill px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors">60s</button>
+                        </div>
+
+                        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                            <input id="autoPlayCheckbox" type="checkbox" checked class="w-4 h-4 accent-[#1db954] rounded cursor-pointer">
+                            <span class="text-xs font-medium text-app-muted">Otomatik oynat</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- MOD B: YEDEK EMBED OYNATICI (SDK BAĞLI DEĞİLKEN) -->
+                <div id="embedPlayerPanel" class="space-y-3">
+                    <div id="spotifyEmbedSlot" class="rounded-xl overflow-hidden bg-app-bg min-h-[152px] flex items-center justify-center border border-app-border">
+                        <!-- Embed iframe dinamik olarak buraya eklenir -->
+                    </div>
+                    <div class="p-3 rounded-xl bg-app-bg border border-app-border flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <span class="text-app-muted">Tam şarkı çalmak ve ileri/geri sarmak için Spotify hesabını bağla.</span>
+                        <div class="flex items-center gap-2">
+                            <a id="fallbackSpotifyAppLink" href="#" class="px-2.5 py-1 rounded-lg bg-app-cardLight hover:bg-app-cardHover border border-app-border text-white font-semibold transition-colors">
+                                Uygulamada Aç
+                            </a>
+                            <button id="btnInlineOpenSpotify" type="button" class="px-2.5 py-1 rounded-lg bg-app-green hover:bg-app-greenHover text-black font-bold transition-colors">
+                                Spotify Bağla
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5'Lİ PUANLAMA BUTONLARI (Soldan Sağa: 1 Very Bad -> 5 Very Good) -->
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                    <button id="btnRate1" type="button" data-rate="1" class="group flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl bg-[#ef4444]/15 hover:bg-[#ef4444] border-2 border-[#ef4444]/50 hover:border-[#ef4444] text-[#ef4444] hover:text-white transition-all duration-150 active:scale-95">
+                        <span class="px-2 py-0.5 rounded-md text-xs font-black bg-black/35 text-white group-hover:bg-black/25 mb-1.5">[1]</span>
+                        <span class="text-xs sm:text-sm font-extrabold tracking-tight leading-tight text-center">Very Bad</span>
+                    </button>
+
+                    <button id="btnRate2" type="button" data-rate="2" class="group flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl bg-[#f97316]/15 hover:bg-[#f97316] border-2 border-[#f97316]/50 hover:border-[#f97316] text-[#f97316] hover:text-black transition-all duration-150 active:scale-95">
+                        <span class="px-2 py-0.5 rounded-md text-xs font-black bg-black/35 text-white group-hover:bg-black/20 group-hover:text-black mb-1.5">[2]</span>
+                        <span class="text-xs sm:text-sm font-extrabold tracking-tight leading-tight text-center">Bad</span>
+                    </button>
+
+                    <button id="btnRate3" type="button" data-rate="3" class="group flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl bg-[#eab308]/15 hover:bg-[#eab308] border-2 border-[#eab308]/50 hover:border-[#eab308] text-[#eab308] hover:text-black transition-all duration-150 active:scale-95">
+                        <span class="px-2 py-0.5 rounded-md text-xs font-black bg-black/35 text-white group-hover:bg-black/20 group-hover:text-black mb-1.5">[3]</span>
+                        <span class="text-xs sm:text-sm font-extrabold tracking-tight leading-tight text-center">Mid</span>
+                    </button>
+
+                    <button id="btnRate4" type="button" data-rate="4" class="group flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl bg-[#22c55e]/15 hover:bg-[#22c55e] border-2 border-[#22c55e]/50 hover:border-[#22c55e] text-[#22c55e] hover:text-black transition-all duration-150 active:scale-95">
+                        <span class="px-2 py-0.5 rounded-md text-xs font-black bg-black/35 text-white group-hover:bg-black/20 group-hover:text-black mb-1.5">[4]</span>
+                        <span class="text-xs sm:text-sm font-extrabold tracking-tight leading-tight text-center">Good</span>
+                    </button>
+
+                    <button id="btnRate5" type="button" data-rate="5" class="col-span-2 sm:col-span-1 glow-emerald group flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl bg-[#00e676]/15 hover:bg-[#00e676] border-2 border-[#00e676]/60 hover:border-[#00e676] text-[#00e676] hover:text-black transition-all duration-150 active:scale-95">
+                        <span class="px-2 py-0.5 rounded-md text-xs font-black bg-black/35 text-white group-hover:bg-black/20 group-hover:text-black mb-1.5">[5]</span>
+                        <span class="text-xs sm:text-sm font-extrabold tracking-tight leading-tight text-center">Very Good</span>
+                    </button>
+                </div>
+
+                <!-- Yardımcı Butonlar: Geri Al ve Atla -->
+                <div class="flex items-center gap-3">
+                    <button id="btnUndo" type="button" class="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-app-cardLight hover:bg-app-cardHover disabled:opacity-40 disabled:cursor-not-allowed border border-app-border text-sm font-semibold transition-all active:scale-95">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                        </svg>
+                        <span>Geri Al</span>
+                        <kbd class="hidden sm:inline text-[11px] px-1.5 py-0.5 rounded bg-app-bg text-app-muted">Z</kbd>
+                    </button>
+
+                    <button id="btnSkip" type="button" class="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-app-cardLight hover:bg-app-cardHover border border-app-border text-sm font-semibold transition-all active:scale-95">
+                        <span>Atla</span>
+                        <kbd class="hidden sm:inline text-[11px] px-1.5 py-0.5 rounded bg-app-bg text-app-muted">S</kbd>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Klavye Kısayol Özeti -->
+                <div class="pt-3 border-t border-app-border/70 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-app-muted">
+                    <span><strong class="text-white">1 - 5</strong> Puanla (1 VB → 5 VG)</span>
+                    <span><strong class="text-white">Space</strong> Oynat/Duraklat</span>
+                    <span><strong class="text-white">← / →</strong> ±10 sn Sar</span>
+                    <span><strong class="text-white">S</strong> Atla</span>
+                    <span><strong class="text-white">Z</strong> Geri Al</span>
+                </div>
+            </div>
+
+            <!-- Tüm Şarkılar Tamamlandı Kartı -->
+            <div id="allDoneCard" class="hidden p-8 rounded-2xl bg-app-card border border-app-green/40 text-center shadow-2xl space-y-4">
+                <div class="w-16 h-16 mx-auto rounded-full bg-app-green/15 text-app-green flex items-center justify-center">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+                <h3 class="text-2xl font-extrabold">Tüm Şarkıları Değerlendirdin!</h3>
+                <p class="text-sm text-app-muted max-w-md mx-auto">
+                    Tier List sekmesinden tüm dağılımı inceleyebilir, şarkıların puanlarını değiştirebilir veya Spotify linklerini kopyalayabilirsin.
+                </p>
+                <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    <button id="btnGoTierFromDone" type="button" class="px-5 py-2.5 rounded-xl bg-app-green hover:bg-app-greenHover text-black font-extrabold text-sm transition-transform active:scale-95">
+                        Tier List'i Gör
+                    </button>
+                    <button id="btnReviewSkipped" type="button" class="hidden px-5 py-2.5 rounded-xl bg-app-cardLight hover:bg-app-cardHover border border-app-border text-white font-semibold text-sm transition-transform active:scale-95">
+                        Atlananları Değerlendir
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================
+             3. EKRAN: TIER LIST VE DIŞA AKTARMA
+             ================================================================ -->
+        <section id="tierView" class="hidden space-y-5">
+            <!-- Dağılım ve Dışa Aktarma Araç Çubuğu -->
+            <div class="p-5 rounded-2xl bg-app-card border border-app-border space-y-5">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-extrabold">Tier List &amp; Dışa Aktarma</h2>
+                        <p id="tierSummaryText" class="text-xs sm:text-sm text-app-muted mt-0.5">Toplam 0 şarkı değerlendirildi.</p>
+                        <p id="viewerLastUpdated" class="hidden text-xs text-app-green mt-1 font-medium">Son güncelleme: -</p>
+                    </div>
+
+                    <!-- Dışa Aktarma Butonları (Sadece Sahip Modunda) -->
+                    <div id="ownerTierActions" class="flex flex-wrap items-center gap-2">
+                        <button id="btnFetchMissingCovers" type="button" class="px-3.5 py-2 rounded-xl bg-app-cardLight hover:bg-app-cardHover border border-app-border text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors">
+                            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <span id="btnFetchCoversLabel">Eksik Kapakları Getir</span>
+                        </button>
+
+                        <button id="btnExportCsv" type="button" class="px-3.5 py-2 rounded-xl bg-app-cardLight hover:bg-app-cardHover border border-app-border text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors">
+                            <svg class="w-4 h-4 text-app-green" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            CSV İndir
+                        </button>
+
+                        <button id="btnExportJson" type="button" class="px-3.5 py-2 rounded-xl bg-app-cardLight hover:bg-app-cardHover border border-app-border text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors">
+                            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            JSON Yedek İndir
+                        </button>
+
+                        <button id="btnTierJsonImport" type="button" class="px-3.5 py-2 rounded-xl bg-app-cardLight hover:bg-app-cardHover border border-app-border text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors">
+                            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                            </svg>
+                            JSON Yükle
+                        </button>
+
+                        <button id="btnTierReset" type="button" class="px-3.5 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/35 text-red-300 text-xs sm:text-sm font-semibold transition-colors">
+                            Yeni Liste Yükle / Sıfırla
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 5 Parçalı Dağılım Çubuğu (5 Very Good -> 1 Very Bad) -->
+                <div class="space-y-2">
+                    <div class="w-full h-3.5 rounded-full bg-app-bg overflow-hidden flex border border-app-border">
+                        <div id="distBar5" class="h-full bg-[#00e676] transition-all duration-300" style="width: 0%"></div>
+                        <div id="distBar4" class="h-full bg-[#22c55e] transition-all duration-300" style="width: 0%"></div>
+                        <div id="distBar3" class="h-full bg-[#eab308] transition-all duration-300" style="width: 0%"></div>
+                        <div id="distBar2" class="h-full bg-[#f97316] transition-all duration-300" style="width: 0%"></div>
+                        <div id="distBar1" class="h-full bg-[#ef4444] transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs font-semibold">
+                        <div class="text-[#00e676]">5 - Very Good: <span id="distLabel5">0 (0%)</span></div>
+                        <div class="text-[#22c55e]">4 - Good: <span id="distLabel4">0 (0%)</span></div>
+                        <div class="text-[#eab308]">3 - Mid: <span id="distLabel3">0 (0%)</span></div>
+                        <div class="text-[#f97316]">2 - Bad: <span id="distLabel2">0 (0%)</span></div>
+                        <div class="text-[#ef4444]">1 - Very Bad: <span id="distLabel1">0 (0%)</span></div>
+                    </div>
+                </div>
+
+                <!-- Spotify Linki Kopyalama Çubuğu -->
+                <div id="tierCopyLinksBar" class="pt-4 border-t border-app-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="text-xs text-app-muted">
+                        <strong class="text-white">Spotify Linki Kopyala:</strong> Kopyaladığın linkleri Spotify masaüstü uygulamasında yeni bir çalma listesine <strong class="text-white">Ctrl+V / Cmd+V</strong> ile yapıştırabilirsin.
+                    </div>
+                    <div class="flex flex-wrap items-center gap-1.5 shrink-0">
+                        <button type="button" data-copy-tier="4_5" class="copy-tier-btn px-3 py-1.5 rounded-lg bg-app-green hover:bg-app-greenHover text-black text-xs font-extrabold transition-colors">
+                            4+5 (Good &amp; VG)
+                        </button>
+                        <button type="button" data-copy-tier="5" class="copy-tier-btn px-2.5 py-1.5 rounded-lg bg-[#00e676]/15 hover:bg-[#00e676]/25 border border-[#00e676]/40 text-[#00e676] text-xs font-bold transition-colors">
+                            5 - VG
+                        </button>
+                        <button type="button" data-copy-tier="4" class="copy-tier-btn px-2.5 py-1.5 rounded-lg bg-[#22c55e]/15 hover:bg-[#22c55e]/25 border border-[#22c55e]/40 text-[#22c55e] text-xs font-bold transition-colors">
+                            4 - Good
+                        </button>
+                        <button type="button" data-copy-tier="3" class="copy-tier-btn px-2.5 py-1.5 rounded-lg bg-[#eab308]/15 hover:bg-[#eab308]/25 border border-[#eab308]/40 text-[#eab308] text-xs font-bold transition-colors">
+                            3 - Mid
+                        </button>
+                        <button type="button" data-copy-tier="2" class="copy-tier-btn px-2.5 py-1.5 rounded-lg bg-[#f97316]/15 hover:bg-[#f97316]/25 border border-[#f97316]/40 text-[#f97316] text-xs font-bold transition-colors">
+                            2 - Bad
+                        </button>
+                        <button type="button" data-copy-tier="1" class="copy-tier-btn px-2.5 py-1.5 rounded-lg bg-[#ef4444]/15 hover:bg-[#ef4444]/25 border border-[#ef4444]/40 text-[#ef4444] text-xs font-bold transition-colors">
+                            1 - VB
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arama ve Filtre Hapları -->
+            <div class="space-y-3">
+                <div class="relative">
+                    <svg class="w-4 h-4 text-app-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <input id="tierSearchInput" type="text" placeholder="Şarkı adı, sanatçı veya albüm ara..." class="w-full pl-10 pr-4 py-3 rounded-xl bg-app-card border border-app-border focus:border-app-green focus:outline-none text-sm text-white placeholder-app-muted transition-colors">
+                </div>
+
+                <div id="tierFilterBar" class="flex flex-wrap items-center gap-1.5">
+                    <button type="button" data-filter="all" class="filter-pill px-3 py-1.5 rounded-xl text-xs font-bold transition-colors">Tümü</button>
+                    <button type="button" data-filter="5" class="filter-pill px-3 py-1.5 rounded-xl text-xs font-bold transition-colors">5 - Very Good</button>
+                    <button type="button" data-filter="4" class="filter-pill px-3 py-1.5 rounded-xl text-xs font-bold transition-colors">4 - Good</button>
+                    <button type="button" data-filter="3" class="filter-pill px-3 py-1.5 rounded-xl text-xs font-bold transition-colors">3 - Mid</button>
+                    <button type="button" data-filter="2" class="filter-pill px-3 py-1.5 rounded-xl text-xs font-bold transition-colors">2 - Bad</button>
+                    <button type="button" data-filter="1" class="filter-pill px-3 py-1.5 rounded-xl text-xs font-bold transition-colors">1 - Very Bad</button>
+                    <button type="button" data-filter="unrated" class="filter-pill px-3 py-1.5 rounded-xl text-xs font-bold transition-colors">Puanlanmadı</button>
+                </div>
+            </div>
+
+            <!-- Eşleşen Şarkılar Listesi -->
+            <div class="rounded-2xl bg-app-card border border-app-border overflow-hidden">
+                <div class="px-4 py-3 border-b border-app-border flex items-center justify-between text-xs text-app-muted bg-app-cardLight/50">
+                    <span id="filteredResultCount" class="font-semibold text-white">0 şarkı listeleniyor</span>
+                    <span id="tierRowActionHint" class="hidden sm:inline">Hızlı puan değiştirme: 5 (VG) → 1 (VB)</span>
+                </div>
+                <div id="tierTracksContainer" class="divide-y divide-app-border/70">
+                    <!-- Şarkı satırları dinamik olarak buraya eklenir -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ====================================================================
+         MODAL 1: SPOTIFY BAĞLANTISI (PKCE OAUTH + WEB PLAYBACK SDK)
+         ==================================================================== -->
+    <div id="spotifyModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+        <div class="w-full max-w-lg rounded-2xl bg-app-card border border-app-border p-6 shadow-2xl my-auto space-y-5">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h3 class="text-lg font-extrabold text-white">Spotify Bağlantısı (Web Playback SDK)</h3>
+                    <p class="text-xs text-app-muted mt-0.5">Tam şarkı çalma, ileri/geri sarma ve playlist çekme (Spotify Premium gerekir).</p>
+                </div>
+                <button id="btnCloseSpotifyModal" type="button" class="p-1.5 rounded-lg text-app-muted hover:text-white hover:bg-app-cardLight transition-colors" aria-label="Kapat">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- file:// veya iframe ortam uyarısı -->
+            <div id="envWarningBox" class="hidden p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/35 text-xs text-amber-200 space-y-1.5 leading-relaxed">
+                <div class="font-bold text-amber-400">Yerel Sunucu Gerekli</div>
+                <p>
+                    Spotify güvenlik gereği <code class="bg-black/40 px-1 py-0.5 rounded">file://</code> veya geçici önizleme pencerelerinden girişe izin vermez. Dosyanın klasöründe şu komutu çalıştırıp <code class="bg-black/40 px-1 py-0.5 rounded">http://127.0.0.1:8000/</code> adresinden aç:
+                </p>
+                <div class="flex items-center justify-between gap-2 bg-black/50 p-2 rounded-lg font-mono text-[11px] text-white">
+                    <span class="truncate">python3 -m http.server 8000 --bind 127.0.0.1</span>
+                    <button id="btnCopyPythonCmd" type="button" class="shrink-0 px-2 py-0.5 rounded bg-app-cardLight hover:bg-app-cardHover text-[10px] font-sans font-semibold">Kopyala</button>
+                </div>
+            </div>
+
+            <!-- Redirect URI Gösterimi -->
+            <div class="space-y-1.5">
+                <label class="block text-xs font-semibold text-app-muted">
+                    Mevcut Redirect URI (Spotify Developer Dashboard ile birebir aynı olmalı):
+                </label>
+                <div class="flex items-center gap-2">
+                    <input id="redirectUriDisplay" type="text" readonly class="flex-1 px-3 py-2 rounded-xl bg-app-bg border border-app-border text-xs font-mono text-app-green focus:outline-none">
+                    <button id="btnCopyRedirectUri" type="button" class="shrink-0 px-3 py-2 rounded-xl bg-app-cardLight hover:bg-app-cardHover border border-app-border text-xs font-semibold transition-colors">
+                        Kopyala
+                    </button>
+                </div>
+                <p class="text-[11px] text-app-muted">Örn: <code class="text-white">http://127.0.0.1:8000/</code></p>
+            </div>
+
+            <!-- Client ID Girişi -->
+            <div class="space-y-1.5">
+                <label for="clientIdInput" class="block text-xs font-semibold text-app-muted">
+                    Spotify Client ID:
+                </label>
+                <input id="clientIdInput" type="text" placeholder="Örn: 4a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p" class="w-full px-3.5 py-2.5 rounded-xl bg-app-bg border border-app-border focus:border-app-green focus:outline-none text-sm font-mono text-white placeholder-app-muted/50">
+            </div>
+
+            <!-- Bağlı Hesap Bilgisi -->
+            <div id="connectedAccountBox" class="hidden p-3.5 rounded-xl bg-app-green/10 border border-app-green/30 flex items-center justify-between gap-3">
+                <div class="text-xs min-w-0">
+                    <div id="connectedAccountName" class="font-bold text-app-green truncate">Spotify Bağlı</div>
+                    <div id="connectedDeviceStatus" class="text-app-muted mt-0.5 truncate">Oynatıcı hazırlanıyor...</div>
+                </div>
+                <button id="btnDisconnectSpotify" type="button" class="shrink-0 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 text-xs font-bold transition-colors">
+                    Bağlantıyı Kes
+                </button>
+            </div>
+
+            <!-- Modal Alt Butonlar -->
+            <div class="flex flex-wrap items-center justify-end gap-2.5 pt-2 border-t border-app-border">
+                <button id="btnCancelSpotifyModal" type="button" class="px-4 py-2.5 rounded-xl bg-app-cardLight hover:bg-app-cardHover text-xs sm:text-sm font-semibold transition-colors">
+                    Kapat
+                </button>
+                <button id="btnStartSpotifyLogin" type="button" class="px-5 py-2.5 rounded-xl bg-app-green hover:bg-app-greenHover text-black text-xs sm:text-sm font-extrabold transition-transform active:scale-95 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.72 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                    </svg>
+                    <span>Spotify ile Giriş Yap</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================================
+         MODAL 2: LİSTE SIFIRLAMA ONAYI
+         ==================================================================== -->
+    <div id="resetModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div class="w-full max-w-md rounded-2xl bg-app-card border border-app-border p-6 shadow-2xl space-y-5">
+            <div>
+                <h3 class="text-lg font-extrabold text-white">Yeni Liste Yükle / Sıfırla</h3>
+                <p class="text-sm text-app-muted mt-1.5 leading-relaxed">
+                    Mevcut liste ve puanlamalar sıfırlanıp başlangıç ekranına dönülecek (Spotify bağlantın korunur). İstersen önce Tier List sekmesinden JSON yedek indirebilirsin.
+                </p>
+            </div>
+            <div class="flex items-center justify-end gap-2.5">
+                <button id="btnCancelReset" type="button" class="px-4 py-2 rounded-xl bg-app-cardLight hover:bg-app-cardHover text-sm font-semibold transition-colors">
+                    Vazgeç
+                </button>
+                <button id="btnConfirmReset" type="button" class="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold transition-colors">
+                    Evet, Sıfırla
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bildirim (Toast) Kapsayıcısı -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-[calc(100%-2.5rem)] pointer-events-none"></div>
+
+    <!-- ====================================================================
+         UYGULAMA JAVASCRIPT KODU
+         ==================================================================== -->
+    <script>
+        (function () {
+            'use strict';
+
+            /* ================================================================
+               1. SABİTLER VE YAPILANDIRMA
+               ================================================================ */
+            const FIREBASE_DB_URL = 'https://spotify-tierlist-31a71-default-rtdb.europe-west1.firebasedatabase.app/tierlist.json';
+            const STORAGE_KEY_STATE = 'sp_tierlist_state_v3';
+            const STORAGE_KEY_AUTH = 'sp_tierlist_auth_v3';
+            const STORAGE_KEY_CLIENT_ID = 'sp_tierlist_client_id_v3';
+            const STORAGE_KEY_PKCE_VERIFIER = 'sp_tierlist_pkce_verifier';
+
+            const SPOTIFY_SCOPES = [
+                'streaming',
+                'user-read-email',
+                'user-read-private',
+                'user-read-playback-state',
+                'user-modify-playback-state',
+                'playlist-read-private',
+                'playlist-read-collaborative'
+            ].join(' ');
+
+            const TIER_META = {
+                5: { label: 'Very Good', short: '5 - VG', color: '#00e676', badgeCls: 'bg-[#00e676]/20 text-[#00e676] border border-[#00e676]/40' },
+                4: { label: 'Good', short: '4 - Good', color: '#22c55e', badgeCls: 'bg-[#22c55e]/20 text-[#22c55e] border border-[#22c55e]/40' },
+                3: { label: 'Mid', short: '3 - Mid', color: '#eab308', badgeCls: 'bg-[#eab308]/20 text-[#eab308] border border-[#eab308]/40' },
+                2: { label: 'Bad', short: '2 - Bad', color: '#f97316', badgeCls: 'bg-[#f97316]/20 text-[#f97316] border border-[#f97316]/40' },
+                1: { label: 'Very Bad', short: '1 - VB', color: '#ef4444', badgeCls: 'bg-[#ef4444]/20 text-[#ef4444] border border-[#ef4444]/40' }
+            };
+
+            const SAMPLE_TRACKS = [
+                { uid: 'sample_1', name: 'Teardrop', artist: 'Massive Attack;Elizabeth Fraser', album: 'Mezzanine', trackId: '67Hna13dNDkZvBpTXRIaOJ', imageUrl: '', durationMs: 330773, rating: null, skipped: false },
+                { uid: 'sample_2', name: 'Glory Box', artist: 'Portishead', album: 'Dummy', trackId: '3Ty7OTBNSigGEpeW2PqcsC', imageUrl: '', durationMs: 308626, rating: null, skipped: false },
+                { uid: 'sample_3', name: '6 Underground', artist: 'Sneaker Pimps', album: 'Becoming X', trackId: '5SJ7mZ4HZWbhFcHpBvHU55', imageUrl: '', durationMs: 228840, rating: null, skipped: false },
+                { uid: 'sample_4', name: 'Lebanese Blonde - Remastered 2022', artist: 'Thievery Corporation', album: 'Mirror Conspiracy', trackId: '7jqinGN85zc1uyPZXBQZNX', imageUrl: '', durationMs: 288826, rating: null, skipped: false },
+                { uid: 'sample_5', name: 'Hell Is Round The Corner', artist: 'Tricky;Martina Topley-Bird', album: 'Maxinquaye', trackId: '2wC0qK8JN6gblb0ZJzE2d9', imageUrl: '', durationMs: 227066, rating: null, skipped: false },
+                { uid: 'sample_6', name: 'Midnight In A Perfect World', artist: 'DJ Shadow', album: 'Endtroducing.....', trackId: '1a9maLxqpx3cxjY1lTj62B', imageUrl: '', durationMs: 298373, rating: null, skipped: false },
+                { uid: 'sample_7', name: 'Les Nuits', artist: 'Nightmares On Wax', album: 'Les Nuits', trackId: '3oHIiFubq4Budu8cYVFoPd', imageUrl: '', durationMs: 380626, rating: null, skipped: false },
+                { uid: 'sample_8', name: 'The Sea', artist: 'Morcheeba', album: 'Big Calm', trackId: '0xjkgYSzHjBZNvyUaC9cXX', imageUrl: '', durationMs: 347280, rating: null, skipped: false }
+            ];
+
+            /* ================================================================
+               2. UYGULAMA DURUMU (STATE)
+               ================================================================ */
+            const urlParams = new URLSearchParams(window.location.search);
+            const isViewerMode = urlParams.get('view') === '1';
+
+            const state = {
+                playlistName: '',
+                tracks: [],
+                playMode: 'sequential', // 'sequential' | 'shuffle'
+                shuffleOrder: [],
+                currentIndex: -1,
+                history: [],
+                activeTab: 'rate', // 'rate' | 'tier'
+                tierFilter: 'all',
+                tierSearch: '',
+                startOffsetSec: 0,
+                autoPlay: true,
+                volume: 70,
+                lastSyncedAt: null
+            };
+
+            const spotify = {
+                accessToken: null,
+                refreshToken: null,
+                expiresAt: 0,
+                clientId: localStorage.getItem(STORAGE_KEY_CLIENT_ID) || '',
+                userName: '',
+                player: null,
+                deviceId: null,
+                isReady: false,
+                isPlaying: false,
+                currentTrackId: null,
+                positionMs: 0,
+                durationMs: 0,
+                lastSyncTimestamp: 0,
+                isSeeking: false,
+                seekTimer: null
+            };
+
+            const coverFetchInFlight = new Set();
+            let isFetchingBatchCovers = false;
+            let cloudSyncTimeout = null;
+
+            /* ================================================================
+               3. DOM REFERANSLARI
+               ================================================================ */
+            const $ = (id) => document.getElementById(id);
+
+            const els = {
+                headerSubtitle: $('headerSubtitle'),
+                headerNavWrapper: $('headerNavWrapper'),
+                tabRateBtn: $('tabRateBtn'),
+                tabTierBtn: $('tabTierBtn'),
+                tabRatedBadge: $('tabRatedBadge'),
+                headerResetBtn: $('headerResetBtn'),
+                cloudSyncPill: $('cloudSyncPill'),
+                cloudSyncDot: $('cloudSyncDot'),
+                cloudSyncText: $('cloudSyncText'),
+                btnCopyViewerLink: $('btnCopyViewerLink'),
+                viewerHeaderControls: $('viewerHeaderControls'),
+                btnViewerRefresh: $('btnViewerRefresh'),
+                headerSpotifyBtn: $('headerSpotifyBtn'),
+                sdkStatusDot: $('sdkStatusDot'),
+                sdkStatusText: $('sdkStatusText'),
+
+                startView: $('startView'),
+                resumeSessionBanner: $('resumeSessionBanner'),
+                resumePlaylistTitle: $('resumePlaylistTitle'),
+                resumePlaylistStats: $('resumePlaylistStats'),
+                btnResumeSession: $('btnResumeSession'),
+                startSdkBannerDesc: $('startSdkBannerDesc'),
+                bannerSpotifyBtn: $('bannerSpotifyBtn'),
+                apiImportBadge: $('apiImportBadge'),
+                playlistUrlInput: $('playlistUrlInput'),
+                playlistFetchStatus: $('playlistFetchStatus'),
+                btnFetchPlaylist: $('btnFetchPlaylist'),
+                csvDropZone: $('csvDropZone'),
+                csvFileInput: $('csvFileInput'),
+                btnStartJsonImport: $('btnStartJsonImport'),
+                btnLoadSample: $('btnLoadSample'),
+                jsonFileInput: $('jsonFileInput'),
+
+                rateView: $('rateView'),
+                progressSummary: $('progressSummary'),
+                btnModeSequential: $('btnModeSequential'),
+                btnModeShuffle: $('btnModeShuffle'),
+                btnReshuffle: $('btnReshuffle'),
+                progressBarFill: $('progressBarFill'),
+                miniStat1: $('miniStat1'),
+                miniStat2: $('miniStat2'),
+                miniStat3: $('miniStat3'),
+                miniStat4: $('miniStat4'),
+                miniStat5: $('miniStat5'),
+                miniStatRemaining: $('miniStatRemaining'),
+
+                activeTrackCard: $('activeTrackCard'),
+                trackCoverImg: $('trackCoverImg'),
+                trackCoverFallback: $('trackCoverFallback'),
+                trackOrderBadge: $('trackOrderBadge'),
+                trackCurrentRatingBadge: $('trackCurrentRatingBadge'),
+                trackAlbumName: $('trackAlbumName'),
+                trackTitle: $('trackTitle'),
+                trackArtistName: $('trackArtistName'),
+                trackExternalLink: $('trackExternalLink'),
+
+                sdkPlayerPanel: $('sdkPlayerPanel'),
+                seekBar: $('seekBar'),
+                timeElapsed: $('timeElapsed'),
+                sdkPlayerStateText: $('sdkPlayerStateText'),
+                timeDuration: $('timeDuration'),
+                btnSeekBack: $('btnSeekBack'),
+                btnPlayPause: $('btnPlayPause'),
+                iconPlay: $('iconPlay'),
+                iconPause: $('iconPause'),
+                btnSeekForward: $('btnSeekForward'),
+                volumeSlider: $('volumeSlider'),
+                autoPlayCheckbox: $('autoPlayCheckbox'),
+
+                embedPlayerPanel: $('embedPlayerPanel'),
+                spotifyEmbedSlot: $('spotifyEmbedSlot'),
+                fallbackSpotifyAppLink: $('fallbackSpotifyAppLink'),
+                btnInlineOpenSpotify: $('btnInlineOpenSpotify'),
+
+                btnUndo: $('btnUndo'),
+                btnSkip: $('btnSkip'),
+
+                allDoneCard: $('allDoneCard'),
+                btnGoTierFromDone: $('btnGoTierFromDone'),
+                btnReviewSkipped: $('btnReviewSkipped'),
+
+                tierView: $('tierView'),
+                tierSummaryText: $('tierSummaryText'),
+                viewerLastUpdated: $('viewerLastUpdated'),
+                ownerTierActions: $('ownerTierActions'),
+                btnFetchMissingCovers: $('btnFetchMissingCovers'),
+                btnFetchCoversLabel: $('btnFetchCoversLabel'),
+                btnExportCsv: $('btnExportCsv'),
+                btnExportJson: $('btnExportJson'),
+                btnTierJsonImport: $('btnTierJsonImport'),
+                btnTierReset: $('btnTierReset'),
+                distBar5: $('distBar5'),
+                distBar4: $('distBar4'),
+                distBar3: $('distBar3'),
+                distBar2: $('distBar2'),
+                distBar1: $('distBar1'),
+                distLabel5: $('distLabel5'),
+                distLabel4: $('distLabel4'),
+                distLabel3: $('distLabel3'),
+                distLabel2: $('distLabel2'),
+                distLabel1: $('distLabel1'),
+                tierCopyLinksBar: $('tierCopyLinksBar'),
+                tierSearchInput: $('tierSearchInput'),
+                filteredResultCount: $('filteredResultCount'),
+                tierRowActionHint: $('tierRowActionHint'),
+                tierTracksContainer: $('tierTracksContainer'),
+
+                spotifyModal: $('spotifyModal'),
+                btnCloseSpotifyModal: $('btnCloseSpotifyModal'),
+                envWarningBox: $('envWarningBox'),
+                btnCopyPythonCmd: $('btnCopyPythonCmd'),
+                redirectUriDisplay: $('redirectUriDisplay'),
+                btnCopyRedirectUri: $('btnCopyRedirectUri'),
+                clientIdInput: $('clientIdInput'),
+                connectedAccountBox: $('connectedAccountBox'),
+                connectedAccountName: $('connectedAccountName'),
+                connectedDeviceStatus: $('connectedDeviceStatus'),
+                btnDisconnectSpotify: $('btnDisconnectSpotify'),
+                btnCancelSpotifyModal: $('btnCancelSpotifyModal'),
+                btnStartSpotifyLogin: $('btnStartSpotifyLogin'),
+
+                resetModal: $('resetModal'),
+                btnCancelReset: $('btnCancelReset'),
+                btnConfirmReset: $('btnConfirmReset'),
+                toastContainer: $('toastContainer')
+            };
+
+            /* ================================================================
+               4. YARDIMCI FONKSİYONLAR
+               ================================================================ */
+            function showToast(message, type = 'info') {
+                const toast = document.createElement('div');
+                const styles = {
+                    success: 'bg-[#1db954] text-black font-bold border-[#1db954]',
+                    error: 'bg-red-500/95 text-white font-semibold border-red-400',
+                    warning: 'bg-amber-500/95 text-black font-bold border-amber-400',
+                    info: 'bg-app-cardLight text-white font-medium border-app-border'
+                };
+                toast.className = `animate-toast pointer-events-auto px-4 py-3 rounded-xl border shadow-2xl text-xs sm:text-sm ${styles[type] || styles.info}`;
+                toast.textContent = message;
+                els.toastContainer.appendChild(toast);
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateY(8px)';
+                    toast.style.transition = 'all 0.2s ease';
+                    setTimeout(() => toast.remove(), 220);
+                }, 3200);
+            }
+
+            function copyToClipboard(text, successMsg) {
+                if (!text) return;
+                const fallbackCopy = () => {
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try {
+                        document.execCommand('copy');
+                        if (successMsg) showToast(successMsg, 'success');
+                    } catch (err) {
+                        showToast('Kopyalama başarısız oldu.', 'error');
+                    }
+                    ta.remove();
+                };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text)
+                        .then(() => { if (successMsg) showToast(successMsg, 'success'); })
+                        .catch(fallbackCopy);
+                } else {
+                    fallbackCopy();
+                }
+            }
+
+            function formatMs(ms) {
+                if (!ms || ms < 0) return '0:00';
+                const totalSec = Math.floor(ms / 1000);
+                const min = Math.floor(totalSec / 60);
+                const sec = totalSec % 60;
+                return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+            }
+
+            function escapeHtml(str) {
+                return String(str || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function extractTrackId(val) {
+                if (!val) return '';
+                const str = String(val).trim();
+                const uriMatch = str.match(/spotify:track:([a-zA-Z0-9]+)/);
+                if (uriMatch) return uriMatch[1];
+                const urlMatch = str.match(/track\/([a-zA-Z0-9]+)/);
+                if (urlMatch) return urlMatch[1];
+                if (/^[a-zA-Z0-9]{22}$/.test(str)) return str;
+                return '';
+            }
+
+            function normalizeTrack(raw, idx) {
+                const trackId = extractTrackId(raw.trackId || raw.uri || raw.url || '');
+                let rating = raw.rating;
+                if (rating !== null && rating !== undefined && rating !== '') {
+                    const num = Number(rating);
+                    rating = (num >= 1 && num <= 5) ? Math.round(num) : null;
+                } else {
+                    rating = null;
+                }
+                return {
+                    uid: raw.uid || `trk_${idx + 1}_${trackId || Math.random().toString(36).slice(2, 8)}`,
+                    rating,
+                    skipped: Boolean(raw.skipped),
+                    name: String(raw.name || 'Bilinmeyen Şarkı').trim(),
+                    artist: String(raw.artist || 'Bilinmeyen Sanatçı').trim(),
+                    album: String(raw.album || '').trim(),
+                    trackId,
+                    imageUrl: String(raw.imageUrl || '').trim(),
+                    durationMs: Number(raw.durationMs) || 0,
+                    uri: trackId ? `spotify:track:${trackId}` : (raw.uri || ''),
+                    url: trackId ? `https://open.spotify.com/track/${trackId}` : (raw.url || '')
+                };
+            }
+
+            function getRedirectUri() {
+                const loc = window.location;
+                if (loc.protocol === 'file:' || loc.origin === 'null') {
+                    return 'http://127.0.0.1:8000/';
+                }
+                return `${loc.origin}${loc.pathname}`;
+            }
+
+            function computeSummary() {
+                const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, skipped: 0 };
+                let rated = 0;
+                for (const t of state.tracks) {
+                    if (t.rating >= 1 && t.rating <= 5) {
+                        counts[t.rating]++;
+                        rated++;
+                    } else if (t.skipped) {
+                        counts.skipped++;
+                    }
+                }
+                const total = state.tracks.length;
+                return {
+                    counts,
+                    rated,
+                    skipped: counts.skipped,
+                    total,
+                    remaining: total - rated
+                };
+            }
+
+            function buildExportPayload() {
+                return {
+                    version: 3,
+                    playlistName: state.playlistName || 'Spotify Playlist',
+                    exportedAt: new Date().toISOString(),
+                    playMode: state.playMode,
+                    shuffleOrder: state.shuffleOrder,
+                    summary: computeSummary(),
+                    tracks: state.tracks
+                };
+            }
+
+            /* ================================================================
+               5. LOCALSTORAGE VE FIREBASE BULUT SENKRONİZASYONU
+               ================================================================ */
+            function saveStateLocal() {
+                if (isViewerMode) return;
+                try {
+                    const payload = {
+                        version: 3,
+                        playlistName: state.playlistName,
+                        playMode: state.playMode,
+                        shuffleOrder: state.shuffleOrder,
+                        tracks: state.tracks,
+                        startOffsetSec: state.startOffsetSec,
+                        autoPlay: state.autoPlay,
+                        volume: state.volume
+                    };
+                    localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(payload));
+                } catch (err) {
+                    console.error('localStorage kayıt hatası:', err);
+                }
+            }
+
+            function loadStateLocal() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY_STATE);
+                    if (!raw) return null;
+                    const parsed = JSON.parse(raw);
+                    if (!parsed || !Array.isArray(parsed.tracks) || parsed.tracks.length === 0) return null;
+                    return parsed;
+                } catch (err) {
+                    console.error('localStorage okuma hatası:', err);
+                    return null;
+                }
+            }
+
+            function setCloudStatus(status, text) {
+                if (!els.cloudSyncDot || !els.cloudSyncText) return;
+                const dotColors = {
+                    idle: 'bg-zinc-500',
+                    syncing: 'bg-amber-400 animate-pulse',
+                    saved: 'bg-[#1db954]',
+                    error: 'bg-red-500'
+                };
+                els.cloudSyncDot.className = `w-2 h-2 rounded-full shrink-0 ${dotColors[status] || dotColors.idle}`;
+                els.cloudSyncText.textContent = text;
+            }
+
+            function triggerCloudSync(immediate = false) {
+                if (isViewerMode || state.tracks.length === 0) return;
+                clearTimeout(cloudSyncTimeout);
+                setCloudStatus('syncing', 'Bulut: Kaydediliyor...');
+                const doSync = async () => {
+                    try {
+                        const payload = buildExportPayload();
+                        const res = await fetch(FIREBASE_DB_URL, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        state.lastSyncedAt = payload.exportedAt;
+                        setCloudStatus('saved', 'Bulut: Kaydedildi');
+                    } catch (err) {
+                        console.error('Firebase senkronizasyon hatası:', err);
+                        setCloudStatus('error', 'Bulut: Hata');
+                    }
+                };
+                if (immediate) {
+                    doSync();
+                } else {
+                    cloudSyncTimeout = setTimeout(doSync, 350);
+                }
+            }
+
+            async function loadFromFirebaseViewer() {
+                try {
+                    els.tierSummaryText.textContent = 'Buluttan güncel liste çekiliyor...';
+                    const res = await fetch(`${FIREBASE_DB_URL}?t=${Date.now()}`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    if (!data || !Array.isArray(data.tracks) || data.tracks.length === 0) {
+                        els.tierSummaryText.textContent = 'Bulutta henüz kayıtlı bir liste bulunamadı.';
+                        els.tierTracksContainer.innerHTML = '<div class="p-8 text-center text-sm text-app-muted">Henüz puanlanmış bir liste yok.</div>';
+                        return;
+                    }
+                    state.playlistName = data.playlistName || 'Spotify Playlist';
+                    state.tracks = data.tracks.map((t, i) => normalizeTrack(t, i));
+                    state.lastSyncedAt = data.exportedAt || null;
+
+                    els.headerSubtitle.textContent = state.playlistName;
+                    if (state.lastSyncedAt) {
+                        const dt = new Date(state.lastSyncedAt);
+                        els.viewerLastUpdated.textContent = `Son güncelleme: ${dt.toLocaleString('tr-TR')}`;
+                        els.viewerLastUpdated.classList.remove('hidden');
+                    }
+                    renderTierList();
+                    showToast('Liste güncellendi.', 'success');
+                } catch (err) {
+                    console.error('Firebase okuma hatası:', err);
+                    showToast('Buluttan veri çekilemedi.', 'error');
+                }
+            }
+
+            /* ================================================================
+               6. KARIŞTIRMA (SHUFFLE) VE SIRA YÖNETİMİ
+               ================================================================ */
+            function generateShuffleOrder(length) {
+                const arr = Array.from({ length }, (_, i) => i);
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            }
+
+            function validateShuffleOrder(order, length) {
+                if (!Array.isArray(order) || order.length !== length) return false;
+                const seen = new Set();
+                for (const idx of order) {
+                    if (!Number.isInteger(idx) || idx < 0 || idx >= length || seen.has(idx)) return false;
+                    seen.add(idx);
+                }
+                return true;
+            }
+
+            function getActiveOrder() {
+                if (state.playMode === 'shuffle') {
+                    if (!validateShuffleOrder(state.shuffleOrder, state.tracks.length)) {
+                        state.shuffleOrder = generateShuffleOrder(state.tracks.length);
+                    }
+                    return state.shuffleOrder;
+                }
+                return Array.from({ length: state.tracks.length }, (_, i) => i);
+            }
+
+            function findNextUnratedIndex(afterTrackIndex = -1, includeSkipped = false) {
+                const order = getActiveOrder();
+                if (order.length === 0) return -1;
+                const startPos = afterTrackIndex >= 0 ? order.indexOf(afterTrackIndex) + 1 : 0;
+
+                for (let step = 0; step < order.length; step++) {
+                    const idx = order[(startPos + step) % order.length];
+                    const t = state.tracks[idx];
+                    if (t && t.rating === null && (includeSkipped || !t.skipped)) {
+                        return idx;
+                    }
+                }
+                if (!includeSkipped) {
+                    return findNextUnratedIndex(afterTrackIndex, true);
+                }
+                return -1;
+            }
+
+            /* ================================================================
+               7. ALBÜM KAPAKLARI (SDK + WEB API + OEMBED)
+               ================================================================ */
+            async function fetchSingleCover(track) {
+                if (!track || track.imageUrl || !track.trackId) return null;
+                if (coverFetchInFlight.has(track.trackId)) return null;
+                coverFetchInFlight.add(track.trackId);
+
+                let foundUrl = '';
+                try {
+                    // 1) Spotify Web API (Token varsa)
+                    if (spotify.accessToken && Date.now() < spotify.expiresAt) {
+                        const res = await fetch(`https://api.spotify.com/v1/tracks/${track.trackId}`, {
+                            headers: { Authorization: `Bearer ${spotify.accessToken}` }
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.album && Array.isArray(data.album.images) && data.album.images.length > 0) {
+                                foundUrl = data.album.images[0].url;
+                            }
+                        }
+                    }
+
+                    // 2) Public oEmbed API (Token yoksa veya API başarısızsa)
+                    if (!foundUrl) {
+                        const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(`https://open.spotify.com/track/${track.trackId}`)}`;
+                        const res = await fetch(oembedUrl);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.thumbnail_url) {
+                                foundUrl = data.thumbnail_url;
+                            }
+                        }
+                    }
+
+                    if (foundUrl) {
+                        track.imageUrl = foundUrl;
+                        saveStateLocal();
+                        // Aktif şarkıysa hemen güncelle
+                        const current = state.tracks[state.currentIndex];
+                        if (current && current.uid === track.uid) {
+                            updatePlayerCoverUI(foundUrl);
+                        }
+                        // Tier List satırında varsa güncelle
+                        const rowImg = document.querySelector(`img[data-cover-uid="${CSS.escape(track.uid)}"]`);
+                        if (rowImg) {
+                            rowImg.src = foundUrl;
+                            rowImg.classList.remove('hidden');
+                            const fb = rowImg.nextElementSibling;
+                            if (fb) fb.classList.add('hidden');
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Kapak çekme hatası:', err);
+                } finally {
+                    coverFetchInFlight.delete(track.trackId);
+                }
+                return foundUrl;
+            }
+
+            async function fetchAllMissingCovers() {
+                if (isFetchingBatchCovers) return;
+                const missing = state.tracks.filter(t => !t.imageUrl && t.trackId);
+                if (missing.length === 0) {
+                    showToast('Tüm şarkıların albüm kapağı zaten mevcut!', 'success');
+                    return;
+                }
+
+                isFetchingBatchCovers = true;
+                els.btnFetchMissingCovers.disabled = true;
+                let updatedCount = 0;
+
+                try {
+                    const hasValidToken = spotify.accessToken && Date.now() < spotify.expiresAt;
+
+                    if (hasValidToken) {
+                        // Spotify Web API: 50'şerli gruplar halinde çok hızlı çek
+                        const batchSize = 50;
+                        for (let i = 0; i < missing.length; i += batchSize) {
+                            const batch = missing.slice(i, i + batchSize);
+                            els.btnFetchCoversLabel.textContent = `Getiriliyor (${Math.min(i + batchSize, missing.length)}/${missing.length})...`;
+                            const ids = batch.map(t => t.trackId).join(',');
+                            const res = await fetch(`https://api.spotify.com/v1/tracks?ids=${ids}`, {
+                                headers: { Authorization: `Bearer ${spotify.accessToken}` }
+                            });
+                            if (res.ok) {
+                                const data = await res.json();
+                                const map = new Map();
+                                (data.tracks || []).forEach(tr => {
+                                    if (tr && tr.id && tr.album && tr.album.images && tr.album.images.length > 0) {
+                                        map.set(tr.id, tr.album.images[0].url);
+                                    }
+                                });
+                                batch.forEach(t => {
+                                    const img = map.get(t.trackId);
+                                    if (img) {
+                                        t.imageUrl = img;
+                                        updatedCount++;
+                                    }
+                                });
+                            }
+                        }
+                    } else {
+                        // oEmbed fallback: 6'şar eşzamanlı istek
+                        const concurrency = 6;
+                        for (let i = 0; i < missing.length; i += concurrency) {
+                            const chunk = missing.slice(i, i + concurrency);
+                            els.btnFetchCoversLabel.textContent = `Getiriliyor (${Math.min(i + concurrency, missing.length)}/${missing.length})...`;
+                            await Promise.all(chunk.map(async (t) => {
+                                const url = await fetchSingleCover(t);
+                                if (url) updatedCount++;
+                            }));
+                        }
+                    }
+
+                    saveStateLocal();
+                    if (updatedCount > 0) {
+                        triggerCloudSync();
+                        renderTierList();
+                        const current = state.tracks[state.currentIndex];
+                        if (current && current.imageUrl) updatePlayerCoverUI(current.imageUrl);
+                        showToast(`${updatedCount} şarkının albüm kapağı eklendi!`, 'success');
+                    } else {
+                        showToast('Yeni albüm kapağı bulunamadı.', 'warning');
+                    }
+                } catch (err) {
+                    console.error('Toplu kapak çekme hatası:', err);
+                    showToast('Kapaklar getirilirken bir hata oluştu.', 'error');
+                } finally {
+                    isFetchingBatchCovers = false;
+                    els.btnFetchMissingCovers.disabled = false;
+                    els.btnFetchCoversLabel.textContent = 'Eksik Kapakları Getir';
+                }
+            }
+
+            function updatePlayerCoverUI(imageUrl) {
+                if (imageUrl) {
+                    els.trackCoverImg.src = imageUrl;
+                    els.trackCoverImg.classList.remove('hidden');
+                    els.trackCoverFallback.classList.add('hidden');
+                } else {
+                    els.trackCoverImg.src = '';
+                    els.trackCoverImg.classList.add('hidden');
+                    els.trackCoverFallback.classList.remove('hidden');
+                }
+            }
+
+            /* ================================================================
+               8. SPOTIFY PKCE OAUTH & WEB PLAYBACK SDK
+               ================================================================ */
+            function generateRandomString(length) {
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                const bytes = new Uint8Array(length);
+                crypto.getRandomValues(bytes);
+                return Array.from(bytes, b => chars[b % chars.length]).join('');
+            }
+
+            async function generateCodeChallenge(verifier) {
+                const data = new TextEncoder().encode(verifier);
+                const digest = await crypto.subtle.digest('SHA-256', data);
+                return btoa(String.fromCharCode(...new Uint8Array(digest)))
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=+$/, '');
+            }
+
+            async function startSpotifyLogin() {
+                const clientId = els.clientIdInput.value.trim();
+                if (!clientId) {
+                    showToast('Lütfen Spotify Client ID gir.', 'warning');
+                    els.clientIdInput.focus();
+                    return;
+                }
+                if (window.location.protocol === 'file:' || window.location.origin === 'null') {
+                    showToast('Yerel sunucu (http://127.0.0.1:8000/) üzerinden açmalısın.', 'error');
+                    return;
+                }
+
+                localStorage.setItem(STORAGE_KEY_CLIENT_ID, clientId);
+                spotify.clientId = clientId;
+
+                const verifier = generateRandomString(64);
+                localStorage.setItem(STORAGE_KEY_PKCE_VERIFIER, verifier);
+                const challenge = await generateCodeChallenge(verifier);
+
+                const params = new URLSearchParams({
+                    client_id: clientId,
+                    response_type: 'code',
+                    redirect_uri: getRedirectUri(),
+                    code_challenge_method: 'S256',
+                    code_challenge: challenge,
+                    scope: SPOTIFY_SCOPES
+                });
+
+                window.location.href = `https://accounts.spotify.com/authorize?${params.toString()}`;
+            }
+
+            async function handleSpotifyCallback() {
+                const code = urlParams.get('code');
+                const errParam = urlParams.get('error');
+                if (errParam) {
+                    showToast(`Spotify giriş hatası: ${errParam}`, 'error');
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    return false;
+                }
+                if (!code) return false;
+
+                const verifier = localStorage.getItem(STORAGE_KEY_PKCE_VERIFIER);
+                const clientId = localStorage.getItem(STORAGE_KEY_CLIENT_ID);
+                if (!verifier || !clientId) {
+                    showToast('Oturum doğrulayıcı bulunamadı, tekrar giriş yap.', 'error');
+                    return false;
+                }
+
+                try {
+                    const res = await fetch('https://accounts.spotify.com/api/token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            client_id: clientId,
+                            grant_type: 'authorization_code',
+                            code,
+                            redirect_uri: getRedirectUri(),
+                            code_verifier: verifier
+                        })
+                    });
+                    const data = await res.json();
+                    if (!res.ok || !data.access_token) {
+                        throw new Error(data.error_description || data.error || 'Token alınamadı');
+                    }
+
+                    saveAuthTokens(data);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    showToast('Spotify bağlantısı başarılı!', 'success');
+                    return true;
+                } catch (err) {
+                    console.error('Spotify token hatası:', err);
+                    showToast(`Spotify token hatası: ${err.message}`, 'error');
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    return false;
+                }
+            }
+
+            function saveAuthTokens(data) {
+                spotify.accessToken = data.access_token;
+                if (data.refresh_token) spotify.refreshToken = data.refresh_token;
+                spotify.expiresAt = Date.now() + ((data.expires_in || 3600) - 60) * 1000;
+                localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify({
+                    accessToken: spotify.accessToken,
+                    refreshToken: spotify.refreshToken,
+                    expiresAt: spotify.expiresAt
+                }));
+            }
+
+            async function refreshSpotifyToken() {
+                if (!spotify.refreshToken || !spotify.clientId) return false;
+                try {
+                    const res = await fetch('https://accounts.spotify.com/api/token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            client_id: spotify.clientId,
+                            grant_type: 'refresh_token',
+                            refresh_token: spotify.refreshToken
+                        })
+                    });
+                    const data = await res.json();
+                    if (!res.ok || !data.access_token) return false;
+                    saveAuthTokens(data);
+                    return true;
+                } catch (err) {
+                    return false;
+                }
+            }
+
+            async function ensureValidToken() {
+                if (!spotify.accessToken) return null;
+                if (Date.now() >= spotify.expiresAt) {
+                    const ok = await refreshSpotifyToken();
+                    if (!ok) {
+                        disconnectSpotify(false);
+                        showToast('Spotify oturumu sona erdi, tekrar bağlan.', 'warning');
+                        return null;
+                    }
+                }
+                return spotify.accessToken;
+            }
+
+            function loadStoredAuth() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY_AUTH);
+                    if (!raw) return false;
+                    const parsed = JSON.parse(raw);
+                    if (!parsed.accessToken) return false;
+                    spotify.accessToken = parsed.accessToken;
+                    spotify.refreshToken = parsed.refreshToken || null;
+                    spotify.expiresAt = parsed.expiresAt || 0;
+                    return true;
+                } catch (err) {
+                    return false;
+                }
+            }
+
+            function disconnectSpotify(notify = true) {
+                if (spotify.player) {
+                    try { spotify.player.disconnect(); } catch (_) {}
+                    spotify.player = null;
+                }
+                spotify.accessToken = null;
+                spotify.refreshToken = null;
+                spotify.expiresAt = 0;
+                spotify.deviceId = null;
+                spotify.isReady = false;
+                spotify.isPlaying = false;
+                spotify.userName = '';
+                localStorage.removeItem(STORAGE_KEY_AUTH);
+                updateSpotifyStatusUI();
+                updatePlayerModeUI();
+                if (notify) showToast('Spotify bağlantısı kesildi.', 'info');
+            }
+
+            function updateSpotifyStatusUI() {
+                const connected = Boolean(spotify.accessToken);
+                if (connected && spotify.isReady) {
+                    els.sdkStatusDot.className = 'w-2.5 h-2.5 rounded-full bg-[#1db954] shrink-0';
+                    els.sdkStatusText.textContent = spotify.userName ? `SDK: ${spotify.userName}` : 'Spotify SDK Hazır';
+                    els.apiImportBadge.textContent = 'Aktif';
+                    els.apiImportBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-md bg-app-green/20 text-app-green shrink-0';
+                    els.startSdkBannerDesc.textContent = 'Spotify Web Playback SDK bağlı! Tam şarkı çalma, ileri/geri sarma ve doğrudan playlist çekme aktif.';
+                    els.bannerSpotifyBtn.textContent = 'Bağlantı Ayarları';
+                } else if (connected) {
+                    els.sdkStatusDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0';
+                    els.sdkStatusText.textContent = 'SDK Bağlanıyor...';
+                    els.apiImportBadge.textContent = 'Aktif';
+                    els.apiImportBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-md bg-app-green/20 text-app-green shrink-0';
+                } else {
+                    els.sdkStatusDot.className = 'w-2.5 h-2.5 rounded-full bg-zinc-500 shrink-0';
+                    els.sdkStatusText.textContent = 'Spotify Bağlı Değil';
+                    els.apiImportBadge.textContent = 'Spotify Bağla';
+                    els.apiImportBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-md bg-app-cardLight text-app-muted shrink-0';
+                    els.startSdkBannerDesc.textContent = '30 saniye sınırını kaldırmak, seek bar ile ileri/geri sarmak ve doğrudan Spotify playlist linki çekmek için bağlan.';
+                    els.bannerSpotifyBtn.textContent = 'Spotify Bağlantısını Aç';
+                }
+
+                if (connected) {
+                    els.connectedAccountBox.classList.remove('hidden');
+                    els.connectedAccountName.textContent = spotify.userName ? `Bağlı Hesap: ${spotify.userName}` : 'Spotify Bağlı';
+                    els.connectedDeviceStatus.textContent = spotify.isReady ? 'Web Playback SDK cihazı aktif' : 'Oynatıcı başlatılıyor...';
+                } else {
+                    els.connectedAccountBox.classList.add('hidden');
+                }
+            }
+
+            async function initSpotifySDK() {
+                const token = await ensureValidToken();
+                if (!token) return;
+
+                updateSpotifyStatusUI();
+
+                // Kullanıcı adını çek
+                try {
+                    const meRes = await fetch('https://api.spotify.com/v1/me', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (meRes.ok) {
+                        const me = await meRes.json();
+                        spotify.userName = me.display_name || me.id || '';
+                        updateSpotifyStatusUI();
+                    }
+                } catch (_) {}
+
+                const createPlayer = () => {
+                    if (spotify.player) return;
+                    spotify.player = new window.Spotify.Player({
+                        name: 'Spotify Tier List Player',
+                        getOAuthToken: async (cb) => {
+                            const t = await ensureValidToken();
+                            if (t) cb(t);
+                        },
+                        volume: state.volume / 100
+                    });
+
+                    spotify.player.addListener('ready', ({ device_id }) => {
+                        spotify.deviceId = device_id;
+                        spotify.isReady = true;
+                        updateSpotifyStatusUI();
+                        updatePlayerModeUI();
+                        showToast('Spotify tam oynatıcı hazır!', 'success');
+                        if (state.activeTab === 'rate' && state.currentIndex >= 0 && state.autoPlay) {
+                            playTrackOnSDK(state.tracks[state.currentIndex]);
+                        }
+                    });
+
+                    spotify.player.addListener('not_ready', () => {
+                        spotify.isReady = false;
+                        updateSpotifyStatusUI();
+                    });
+
+                    spotify.player.addListener('initialization_error', ({ message }) => {
+                        showToast(`SDK Başlatma Hatası: ${message}`, 'error');
+                    });
+                    spotify.player.addListener('authentication_error', ({ message }) => {
+                        showToast(`SDK Kimlik Hatası: ${message}`, 'error');
+                    });
+                    spotify.player.addListener('account_error', () => {
+                        showToast('Web Playback SDK için Spotify Premium hesabı gereklidir.', 'error');
+                    });
+
+                    spotify.player.addListener('player_state_changed', (sdkState) => {
+                        if (!sdkState) return;
+                        spotify.isPlaying = !sdkState.paused;
+                        spotify.positionMs = sdkState.position || 0;
+                        spotify.durationMs = sdkState.duration || 0;
+                        spotify.lastSyncTimestamp = Date.now();
+
+                        // Albüm kapağını otomatik yakala ve kaydet
+                        const sdkTrack = sdkState.track_window && sdkState.track_window.current_track;
+                        if (sdkTrack && sdkTrack.album && Array.isArray(sdkTrack.album.images) && sdkTrack.album.images.length > 0) {
+                            const coverUrl = sdkTrack.album.images[0].url;
+                            const activeTrack = state.tracks[state.currentIndex];
+                            if (activeTrack && (!activeTrack.imageUrl || activeTrack.trackId === sdkTrack.id)) {
+                                if (!activeTrack.imageUrl) {
+                                    activeTrack.imageUrl = coverUrl;
+                                    saveStateLocal();
+                                }
+                                updatePlayerCoverUI(activeTrack.imageUrl);
+                            }
+                        }
+
+                        updatePlayPauseIcons();
+                        updateSeekUI();
+                    });
+
+                    spotify.player.connect();
+                };
+
+                if (window.Spotify && window.Spotify.Player) {
+                    createPlayer();
+                } else {
+                    window.onSpotifyWebPlaybackSDKReady = createPlayer;
+                    if (!document.getElementById('spotify-sdk-script')) {
+                        const script = document.createElement('script');
+                        script.id = 'spotify-sdk-script';
+                        script.src = 'https://sdk.scdn.co/spotify-player.js';
+                        script.async = true;
+                        document.body.appendChild(script);
+                    }
+                }
+            }
+
+            async function playTrackOnSDK(track) {
+                if (!track || !track.uri || !spotify.isReady || !spotify.deviceId) return;
+                const token = await ensureValidToken();
+                if (!token) return;
+
+                spotify.currentTrackId = track.trackId;
+                els.sdkPlayerStateText.textContent = 'Yükleniyor...';
+
+                try {
+                    const positionMs = Math.max(0, state.startOffsetSec * 1000);
+                    const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${spotify.deviceId}`, {
+                        method: 'PUT',
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            uris: [track.uri],
+                            position_ms: positionMs
+                        })
+                    });
+                    if (!res.ok && res.status !== 204) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData.error?.message || `HTTP ${res.status}`);
+                    }
+                    spotify.isPlaying = true;
+                    spotify.positionMs = positionMs;
+                    spotify.durationMs = track.durationMs || spotify.durationMs;
+                    spotify.lastSyncTimestamp = Date.now();
+                    updatePlayPauseIcons();
+                    els.sdkPlayerStateText.textContent = 'Çalıyor';
+                } catch (err) {
+                    console.error('Oynatma hatası:', err);
+                    els.sdkPlayerStateText.textContent = 'Oynatılamadı';
+                    showToast(`Oynatma hatası: ${err.message}`, 'error');
+                }
+            }
+
+            function updatePlayPauseIcons() {
+                if (spotify.isPlaying) {
+                    els.iconPlay.classList.add('hidden');
+                    els.iconPause.classList.remove('hidden');
+                    els.sdkPlayerStateText.textContent = 'Çalıyor';
+                } else {
+                    els.iconPlay.classList.remove('hidden');
+                    els.iconPause.classList.add('hidden');
+                    els.sdkPlayerStateText.textContent = 'Duraklatıldı';
+                }
+            }
+
+            function updateSeekUI() {
+                if (spotify.isSeeking) return;
+                const dur = spotify.durationMs || (state.tracks[state.currentIndex]?.durationMs) || 0;
+                let pos = spotify.positionMs;
+                if (spotify.isPlaying && spotify.lastSyncTimestamp > 0) {
+                    pos = Math.min(dur, spotify.positionMs + (Date.now() - spotify.lastSyncTimestamp));
+                }
+                els.timeElapsed.textContent = formatMs(pos);
+                els.timeDuration.textContent = formatMs(dur);
+                els.seekBar.value = dur > 0 ? Math.round((pos / dur) * 1000) : 0;
+            }
+
+            setInterval(() => {
+                if (spotify.isReady && spotify.isPlaying && !spotify.isSeeking) {
+                    updateSeekUI();
+                }
+            }, 400);
+
+            function seekRelative(deltaSec) {
+                if (!spotify.isReady || !spotify.player) return;
+                const dur = spotify.durationMs || 0;
+                let cur = spotify.positionMs;
+                if (spotify.isPlaying && spotify.lastSyncTimestamp > 0) {
+                    cur += (Date.now() - spotify.lastSyncTimestamp);
+                }
+                const target = Math.max(0, Math.min(dur, cur + deltaSec * 1000));
+                spotify.positionMs = target;
+                spotify.lastSyncTimestamp = Date.now();
+                spotify.player.seek(target);
+                updateSeekUI();
+            }
+
+            /* ================================================================
+               9. VERİ İÇE AKTARMA (PLAYLIST LINK / CSV / JSON YEDEK / ÖRNEK)
+               ================================================================ */
+            async function fetchSpotifyPlaylistByUrl() {
+                const rawUrl = els.playlistUrlInput.value.trim();
+                const match = rawUrl.match(/playlist[/:]([a-zA-Z0-9]+)/);
+                if (!match) {
+                    showToast('Geçerli bir Spotify playlist linki gir.', 'warning');
+                    return;
+                }
+                const token = await ensureValidToken();
+                if (!token) {
+                    openSpotifyModal();
+                    showToast('Playlist çekmek için önce Spotify bağlantısını aç.', 'info');
+                    return;
+                }
+
+                const playlistId = match[1];
+                els.btnFetchPlaylist.disabled = true;
+                els.playlistFetchStatus.textContent = 'Playlist bilgileri alınıyor...';
+
+                try {
+                    const plRes = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}?fields=name,tracks.total`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (!plRes.ok) throw new Error(`Playlist okunamadı (HTTP ${plRes.status})`);
+                    const plMeta = await plRes.json();
+                    const playlistName = plMeta.name || 'Spotify Playlist';
+
+                    let allTracks = [];
+                    let nextUrl = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`;
+
+                    while (nextUrl) {
+                        els.playlistFetchStatus.textContent = `Şarkılar çekiliyor (${allTracks.length})...`;
+                        const res = await fetch(nextUrl, {
+                            headers: { Authorization: `Bearer ${token}` }
+                        });
+                        if (!res.ok) throw new Error(`Şarkılar alınamadı (HTTP ${res.status})`);
+                        const data = await res.json();
+                        for (const item of (data.items || [])) {
+                            const tr = item && item.track;
+                            if (!tr || !tr.id || tr.is_local) continue;
+                            allTracks.push(normalizeTrack({
+                                uid: `api_${allTracks.length + 1}_${tr.id}`,
+                                name: tr.name,
+                                artist: (tr.artists || []).map(a => a.name).join(';'),
+                                album: tr.album ? tr.album.name : '',
+                                trackId: tr.id,
+                                imageUrl: (tr.album && tr.album.images && tr.album.images[0]) ? tr.album.images[0].url : '',
+                                durationMs: tr.duration_ms || 0,
+                                rating: null,
+                                skipped: false
+                            }, allTracks.length));
+                        }
+                        nextUrl = data.next;
+                    }
+
+                    if (allTracks.length === 0) {
+                        throw new Error('Playlistte çalınabilir şarkı bulunamadı.');
+                    }
+
+                    loadWorkspace({
+                        playlistName,
+                        tracks: allTracks,
+                        playMode: 'sequential',
+                        shuffleOrder: generateShuffleOrder(allTracks.length)
+                    }, true);
+                    els.playlistFetchStatus.textContent = '';
+                    showToast(`${playlistName}: ${allTracks.length} şarkı yüklendi!`, 'success');
+                } catch (err) {
+                    console.error('Playlist çekme hatası:', err);
+                    els.playlistFetchStatus.textContent = '';
+                    showToast(err.message || 'Playlist çekilemedi.', 'error');
+                } finally {
+                    els.btnFetchPlaylist.disabled = false;
+                }
+            }
+
+            function parseCsvLine(line) {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+                for (let i = 0; i < line.length; i++) {
+                    const ch = line[i];
+                    if (ch === '"') {
+                        if (inQuotes && line[i + 1] === '"') {
+                            current += '"';
+                            i++;
+                        } else {
+                            inQuotes = !inQuotes;
+                        }
+                    } else if (ch === ',' && !inQuotes) {
+                        result.push(current);
+                        current = '';
+                    } else {
+                        current += ch;
+                    }
+                }
+                result.push(current);
+                return result;
+            }
+
+            function handleCsvFile(file) {
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const text = String(e.target.result || '').replace(/^\uFEFF/, '');
+                        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+                        if (lines.length < 2) throw new Error('CSV dosyası boş görünüyor.');
+
+                        const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
+                        const idxUri = headers.findIndex(h => h.includes('track uri') || h === 'uri');
+                        const idxName = headers.findIndex(h => h.includes('track name') || h === 'name' || h.includes('şarkı'));
+                        const idxArtist = headers.findIndex(h => h.includes('artist name') || h === 'artist' || h.includes('sanatçı'));
+                        const idxAlbum = headers.findIndex(h => h.includes('album name') || h === 'album' || h.includes('albüm'));
+                        const idxDur = headers.findIndex(h => h.includes('duration') || h.includes('süre'));
+                        const idxImg = headers.findIndex(h => h.includes('album image') || h.includes('image'));
+
+                        const tracks = [];
+                        for (let i = 1; i < lines.length; i++) {
+                            const cols = parseCsvLine(lines[i]);
+                            const uriVal = idxUri >= 0 ? cols[idxUri] : '';
+                            const trackId = extractTrackId(uriVal);
+                            const name = idxName >= 0 ? cols[idxName] : '';
+                            if (!name && !trackId) continue;
+
+                            tracks.push(normalizeTrack({
+                                uid: `csv_${tracks.length + 1}_${trackId || i}`,
+                                name: name || 'Bilinmeyen Şarkı',
+                                artist: idxArtist >= 0 ? cols[idxArtist] : '',
+                                album: idxAlbum >= 0 ? cols[idxAlbum] : '',
+                                trackId,
+                                imageUrl: idxImg >= 0 ? cols[idxImg] : '',
+                                durationMs: idxDur >= 0 ? Number(cols[idxDur]) || 0 : 0,
+                                rating: null,
+                                skipped: false
+                            }, tracks.length));
+                        }
+
+                        if (tracks.length === 0) throw new Error('CSV içinde geçerli şarkı bulunamadı.');
+
+                        const cleanName = file.name.replace(/\.csv$/i, '');
+                        loadWorkspace({
+                            playlistName: cleanName,
+                            tracks,
+                            playMode: 'sequential',
+                            shuffleOrder: generateShuffleOrder(tracks.length)
+                        }, true);
+                        showToast(`CSV yüklendi: ${tracks.length} şarkı`, 'success');
+                    } catch (err) {
+                        console.error('CSV hatası:', err);
+                        showToast(`CSV okunamadı: ${err.message}`, 'error');
+                    } finally {
+                        els.csvFileInput.value = '';
+                    }
+                };
+                reader.readAsText(file, 'UTF-8');
+            }
+
+            function handleJsonBackupFile(file) {
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const rawText = String(e.target.result || '');
+                        const parsed = JSON.parse(rawText);
+
+                        const rawTracks = Array.isArray(parsed) ? parsed : parsed.tracks;
+                        if (!Array.isArray(rawTracks) || rawTracks.length === 0) {
+                            throw new Error('JSON dosyasında geçerli "tracks" listesi bulunamadı.');
+                        }
+
+                        const tracks = rawTracks.map((t, idx) => normalizeTrack(t, idx));
+                        const playlistName = (parsed.playlistName && String(parsed.playlistName).trim()) || file.name.replace(/\.json$/i, '') || 'Yedek Playlist';
+                        const playMode = parsed.playMode === 'shuffle' ? 'shuffle' : 'sequential';
+                        const shuffleOrder = validateShuffleOrder(parsed.shuffleOrder, tracks.length)
+                            ? parsed.shuffleOrder
+                            : generateShuffleOrder(tracks.length);
+
+                        loadWorkspace({
+                            playlistName,
+                            tracks,
+                            playMode,
+                            shuffleOrder
+                        }, true);
+
+                        const summary = computeSummary();
+                        showToast(`Yedek yüklendi: ${summary.total} şarkı, ${summary.rated} puanlı`, 'success');
+                    } catch (err) {
+                        console.error('JSON yedek yükleme hatası:', err);
+                        showToast(`JSON yüklenemedi: ${err.message}`, 'error');
+                    } finally {
+                        els.jsonFileInput.value = '';
+                    }
+                };
+                reader.readAsText(file, 'UTF-8');
+            }
+
+            function loadWorkspace(data, syncToCloud = false) {
+                state.playlistName = data.playlistName || 'Spotify Playlist';
+                state.tracks = data.tracks.map((t, idx) => normalizeTrack(t, idx));
+                state.playMode = data.playMode === 'shuffle' ? 'shuffle' : 'sequential';
+                state.shuffleOrder = validateShuffleOrder(data.shuffleOrder, state.tracks.length)
+                    ? data.shuffleOrder
+                    : generateShuffleOrder(state.tracks.length);
+                state.history = [];
+                state.currentIndex = findNextUnratedIndex(-1, false);
+
+                saveStateLocal();
+                if (syncToCloud) triggerCloudSync(true);
+
+                els.headerSubtitle.textContent = state.playlistName;
+                els.startView.classList.add('hidden');
+                els.headerNavWrapper.classList.remove('hidden');
+                els.headerNavWrapper.classList.add('flex');
+
+                switchTab(state.currentIndex >= 0 ? 'rate' : 'tier');
+            }
+
+            /* ================================================================
+               10. DEĞERLENDİRME (RATE) VE OYNATICI ARAYÜZÜ
+               ================================================================ */
+            function switchTab(tab) {
+                state.activeTab = tab;
+                if (tab === 'rate') {
+                    els.rateView.classList.remove('hidden');
+                    els.tierView.classList.add('hidden');
+                    els.tabRateBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-app-cardLight text-white';
+                    els.tabTierBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-app-muted hover:text-white flex items-center gap-1.5';
+                    renderRateView();
+                } else {
+                    els.rateView.classList.add('hidden');
+                    els.tierView.classList.remove('hidden');
+                    els.tabTierBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-app-cardLight text-white flex items-center gap-1.5';
+                    els.tabRateBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-app-muted hover:text-white';
+                    renderTierList();
+                }
+            }
+
+            function updatePlayerModeUI() {
+                if (spotify.isReady) {
+                    els.sdkPlayerPanel.classList.remove('hidden');
+                    els.embedPlayerPanel.classList.add('hidden');
+                } else {
+                    els.sdkPlayerPanel.classList.add('hidden');
+                    els.embedPlayerPanel.classList.remove('hidden');
+                }
+            }
+
+            function renderRateView() {
+                const summary = computeSummary();
+                const pct = summary.total > 0 ? Math.round((summary.rated / summary.total) * 100) : 0;
+
+                els.progressSummary.textContent = `${summary.rated} / ${summary.total} (${pct}%)`;
+                els.progressBarFill.style.width = `${pct}%`;
+                els.tabRatedBadge.textContent = String(summary.rated);
+
+                els.miniStat1.textContent = String(summary.counts[1]);
+                els.miniStat2.textContent = String(summary.counts[2]);
+                els.miniStat3.textContent = String(summary.counts[3]);
+                els.miniStat4.textContent = String(summary.counts[4]);
+                els.miniStat5.textContent = String(summary.counts[5]);
+                els.miniStatRemaining.textContent = String(summary.remaining);
+
+                // Sıralı / Karışık buton stilleri
+                if (state.playMode === 'shuffle') {
+                    els.btnModeShuffle.className = 'px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-app-green text-black flex items-center gap-1';
+                    els.btnModeSequential.className = 'px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-app-muted hover:text-white';
+                    els.btnReshuffle.classList.remove('hidden');
+                    els.btnReshuffle.classList.add('inline-flex');
+                } else {
+                    els.btnModeSequential.className = 'px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-app-cardLight text-white';
+                    els.btnModeShuffle.className = 'px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-app-muted hover:text-white flex items-center gap-1';
+                    els.btnReshuffle.classList.add('hidden');
+                    els.btnReshuffle.classList.remove('inline-flex');
+                }
+
+                els.btnUndo.disabled = state.history.length === 0;
+
+                if (state.currentIndex < 0 || !state.tracks[state.currentIndex]) {
+                    els.activeTrackCard.classList.add('hidden');
+                    els.allDoneCard.classList.remove('hidden');
+                    if (summary.skipped > 0) {
+                        els.btnReviewSkipped.classList.remove('hidden');
+                        els.btnReviewSkipped.textContent = `Atlananları Değerlendir (${summary.skipped})`;
+                    } else {
+                        els.btnReviewSkipped.classList.add('hidden');
+                    }
+                    return;
+                }
+
+                els.activeTrackCard.classList.remove('hidden');
+                els.allDoneCard.classList.add('hidden');
+
+                const track = state.tracks[state.currentIndex];
+                els.trackOrderBadge.textContent = `#${state.currentIndex + 1}`;
+                els.trackTitle.textContent = track.name;
+                els.trackArtistName.textContent = track.artist.replace(/;/g, ', ');
+                els.trackAlbumName.textContent = track.album || 'Albüm bilgisi yok';
+                els.trackExternalLink.href = track.url || '#';
+                els.fallbackSpotifyAppLink.href = track.uri || track.url || '#';
+
+                if (track.rating && TIER_META[track.rating]) {
+                    const meta = TIER_META[track.rating];
+                    els.trackCurrentRatingBadge.textContent = meta.short;
+                    els.trackCurrentRatingBadge.className = `text-[11px] font-bold px-2 py-0.5 rounded-md ${meta.badgeCls}`;
+                    els.trackCurrentRatingBadge.classList.remove('hidden');
+                } else {
+                    els.trackCurrentRatingBadge.classList.add('hidden');
+                }
+
+                // Kapak görseli
+                updatePlayerCoverUI(track.imageUrl);
+                if (!track.imageUrl && track.trackId) {
+                    fetchSingleCover(track);
+                }
+
+                // Oynatıcı (SDK veya Embed)
+                updatePlayerModeUI();
+                if (spotify.isReady) {
+                    if (state.autoPlay && spotify.currentTrackId !== track.trackId) {
+                        playTrackOnSDK(track);
+                    }
+                } else {
+                    renderEmbedPlayer(track);
+                }
+            }
+
+            function renderEmbedPlayer(track) {
+                if (!track || !track.trackId) {
+                    els.spotifyEmbedSlot.innerHTML = '<div class="p-6 text-xs text-app-muted">Bu şarkı için Spotify ID bulunamadı.</div>';
+                    return;
+                }
+                const existingIframe = els.spotifyEmbedSlot.querySelector('iframe');
+                const targetSrc = `https://open.spotify.com/embed/track/${track.trackId}?utm_source=generator&theme=0`;
+                if (existingIframe && existingIframe.src === targetSrc) return;
+
+                els.spotifyEmbedSlot.innerHTML = `
+                    <iframe
+                        style="border-radius:12px"
+                        src="${targetSrc}"
+                        width="100%"
+                        height="152"
+                        frameBorder="0"
+                        allowfullscreen=""
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy">
+                    </iframe>
+                `;
+            }
+
+            function rateCurrentTrack(score) {
+                if (isViewerMode) return;
+                const idx = state.currentIndex;
+                const track = state.tracks[idx];
+                if (!track) return;
+
+                // Görsel tuş parlama efekti
+                const btn = document.querySelector(`button[data-rate="${score}"]`);
+                if (btn) {
+                    btn.classList.add('key-flash');
+                    setTimeout(() => btn.classList.remove('key-flash'), 140);
+                }
+
+                state.history.push({
+                    index: idx,
+                    prevRating: track.rating,
+                    prevSkipped: track.skipped
+                });
+
+                track.rating = score;
+                track.skipped = false;
+
+                state.currentIndex = findNextUnratedIndex(idx, false);
+                saveStateLocal();
+                triggerCloudSync();
+                renderRateView();
+            }
+
+            function skipCurrentTrack() {
+                const idx = state.currentIndex;
+                const track = state.tracks[idx];
+                if (!track) return;
+
+                state.history.push({
+                    index: idx,
+                    prevRating: track.rating,
+                    prevSkipped: track.skipped
+                });
+
+                track.skipped = true;
+                state.currentIndex = findNextUnratedIndex(idx, false);
+                saveStateLocal();
+                renderRateView();
+            }
+
+            function undoLastAction() {
+                if (state.history.length === 0) return;
+                const last = state.history.pop();
+                const track = state.tracks[last.index];
+                if (!track) return;
+
+                track.rating = last.prevRating;
+                track.skipped = last.prevSkipped;
+                state.currentIndex = last.index;
+                spotify.currentTrackId = null;
+
+                saveStateLocal();
+                triggerCloudSync();
+                renderRateView();
+                showToast('Son işlem geri alındı.', 'info');
+            }
+
+            /* ================================================================
+               11. TIER LIST GÖRÜNÜMÜ VE DIŞA AKTARMA
+               ================================================================ */
+            function renderTierList() {
+                const summary = computeSummary();
+                els.tabRatedBadge.textContent = String(summary.rated);
+                els.tierSummaryText.textContent = `Toplam ${summary.total} şarkıdan ${summary.rated} tanesi değerlendirildi (${summary.remaining} kalan).`;
+
+                const denom = summary.rated > 0 ? summary.rated : 1;
+                [5, 4, 3, 2, 1].forEach((tier) => {
+                    const cnt = summary.counts[tier];
+                    const pct = summary.rated > 0 ? Math.round((cnt / denom) * 100) : 0;
+                    els[`distBar${tier}`].style.width = `${pct}%`;
+                    els[`distLabel${tier}`].textContent = `${cnt} (${pct}%)`;
+                });
+
+                // Filtre haplarını güncelle
+                document.querySelectorAll('.filter-pill').forEach((btn) => {
+                    const active = btn.dataset.filter === state.tierFilter;
+                    btn.className = active
+                        ? 'filter-pill px-3 py-1.5 rounded-xl text-xs font-bold transition-colors bg-app-green text-black'
+                        : 'filter-pill px-3 py-1.5 rounded-xl text-xs font-bold transition-colors bg-app-card hover:bg-app-cardLight border border-app-border text-app-muted hover:text-white';
+                });
+
+                const q = state.tierSearch.trim().toLowerCase();
+                const filtered = [];
+                state.tracks.forEach((t, idx) => {
+                    if (state.tierFilter === 'unrated' && t.rating !== null) return;
+                    if (['1', '2', '3', '4', '5'].includes(state.tierFilter) && String(t.rating) !== state.tierFilter) return;
+                    if (q) {
+                        const hay = `${t.name} ${t.artist} ${t.album}`.toLowerCase();
+                        if (!hay.includes(q)) return;
+                    }
+                    filtered.push({ track: t, index: idx });
+                });
+
+                // Puanlıları 5 -> 1 sırala, puansızlar en altta
+                filtered.sort((a, b) => (b.track.rating || 0) - (a.track.rating || 0));
+
+                els.filteredResultCount.textContent = `${filtered.length} şarkı listeleniyor`;
+
+                if (filtered.length === 0) {
+                    els.tierTracksContainer.innerHTML = '<div class="p-8 text-center text-sm text-app-muted">Bu filtreye uygun şarkı bulunamadı.</div>';
+                    return;
+                }
+
+                const html = filtered.map(({ track, index }) => {
+                    const meta = track.rating ? TIER_META[track.rating] : null;
+                    const badgeHtml = meta
+                        ? `<span class="px-2 py-0.5 rounded-md text-[11px] font-bold shrink-0 ${meta.badgeCls}">${meta.short}</span>`
+                        : `<span class="px-2 py-0.5 rounded-md text-[11px] font-semibold shrink-0 bg-app-bg text-app-muted border border-app-border">Puanlanmadı</span>`;
+
+                    const coverHtml = track.imageUrl
+                        ? `<img data-cover-uid="${escapeHtml(track.uid)}" src="${escapeHtml(track.imageUrl)}" alt="" loading="lazy" class="w-11 h-11 rounded-lg object-cover shrink-0 bg-app-bg border border-app-border" onerror="this.classList.add('hidden');this.nextElementSibling.classList.remove('hidden');">
+                           <div class="hidden w-11 h-11 rounded-lg shrink-0 bg-app-bg border border-app-border flex items-center justify-center text-app-muted/50">
+                               <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                           </div>`
+                        : `<img data-cover-uid="${escapeHtml(track.uid)}" src="" alt="" class="hidden w-11 h-11 rounded-lg object-cover shrink-0 bg-app-bg border border-app-border">
+                           <div class="w-11 h-11 rounded-lg shrink-0 bg-app-bg border border-app-border flex items-center justify-center text-app-muted/50">
+                               <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                           </div>`;
+
+                    const ownerControls = isViewerMode ? '' : `
+                        <div class="flex items-center gap-1 shrink-0">
+                            ${[5, 4, 3, 2, 1].map(r => `
+                                <button type="button" data-row-rate="${r}" data-track-idx="${index}" class="w-7 h-7 rounded-lg text-xs font-extrabold transition-all ${track.rating === r ? 'bg-app-green text-black scale-105' : 'bg-app-bg hover:bg-app-cardHover text-app-muted hover:text-white border border-app-border'}">${r}</button>
+                            `).join('')}
+                            <button type="button" data-listen-idx="${index}" title="Bu şarkıyı dinle" class="ml-1 px-2.5 h-7 rounded-lg bg-app-cardLight hover:bg-app-green hover:text-black border border-app-border text-xs font-bold transition-colors">
+                                Dinle
+                            </button>
+                        </div>
+                    `;
+
+                    return `
+                        <div class="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-app-cardLight/40 transition-colors">
+                            <div class="flex items-center gap-3 min-w-0 flex-1">
+                                ${coverHtml}
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <a href="${escapeHtml(track.url || '#')}" target="_blank" rel="noopener noreferrer" class="text-sm font-bold text-white hover:text-app-green truncate transition-colors">${escapeHtml(track.name)}</a>
+                                        ${badgeHtml}
+                                    </div>
+                                    <div class="text-xs text-app-muted truncate mt-0.5">${escapeHtml(track.artist.replace(/;/g, ', '))}${track.album ? ` • ${escapeHtml(track.album)}` : ''}</div>
+                                </div>
+                            </div>
+                            ${ownerControls}
+                        </div>
+                    `;
+                }).join('');
+
+                els.tierTracksContainer.innerHTML = html;
+            }
+
+            function exportCsv() {
+                const headers = ['Sira', 'Puan', 'Kategori', 'Sarki', 'Sanatci', 'Album', 'Spotify URL'];
+                const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+                const rows = [headers.join(',')];
+                state.tracks.forEach((t, i) => {
+                    const cat = t.rating ? TIER_META[t.rating].label : 'Puanlanmadi';
+                    rows.push([i + 1, t.rating ?? '', cat, t.name, t.artist, t.album, t.url].map(esc).join(','));
+                });
+                const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+                downloadBlob(blob, `${(state.playlistName || 'tierlist').replace(/[^\w-]+/g, '_')}_tierlist.csv`);
+                showToast('CSV indirildi!', 'success');
+            }
+
+            function exportJson() {
+                const payload = buildExportPayload();
+                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8;' });
+                downloadBlob(blob, `${(state.playlistName || 'tierlist').replace(/[^\w-]+/g, '_')}_yedek.json`);
+                showToast('JSON yedeği indirildi!', 'success');
+            }
+
+            function downloadBlob(blob, filename) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            }
+
+            function copyTierLinks(tierSpec) {
+                let matching = [];
+                if (tierSpec === '4_5') {
+                    matching = state.tracks.filter(t => (t.rating === 4 || t.rating === 5) && t.url);
+                } else {
+                    const num = Number(tierSpec);
+                    matching = state.tracks.filter(t => t.rating === num && t.url);
+                }
+                if (matching.length === 0) {
+                    showToast('Bu kategoride kopyalanacak şarkı yok.', 'warning');
+                    return;
+                }
+                const text = matching.map(t => t.url).join('\n');
+                copyToClipboard(text, `${matching.length} şarkının Spotify linki kopyalandı!`);
+            }
+
+            /* ================================================================
+               12. MODALLAR VE OLAY DİNLEYİCİLERİ (EVENT LISTENERS)
+               ================================================================ */
+            function openSpotifyModal() {
+                els.redirectUriDisplay.value = getRedirectUri();
+                els.clientIdInput.value = spotify.clientId || localStorage.getItem(STORAGE_KEY_CLIENT_ID) || '';
+                const isLocalFile = window.location.protocol === 'file:' || window.location.origin === 'null';
+                els.envWarningBox.classList.toggle('hidden', !isLocalFile);
+                updateSpotifyStatusUI();
+                els.spotifyModal.classList.remove('hidden');
+            }
+
+            function closeSpotifyModal() {
+                els.spotifyModal.classList.add('hidden');
+            }
+
+            function updateOffsetPillsUI() {
+                document.querySelectorAll('.offset-pill').forEach((btn) => {
+                    const sec = Number(btn.dataset.offset);
+                    const active = sec === state.startOffsetSec;
+                    btn.className = active
+                        ? 'offset-pill px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors bg-app-green text-black'
+                        : 'offset-pill px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors bg-app-card hover:bg-app-cardLight text-app-muted border border-app-border';
+                });
+            }
+
+            function bindEvents() {
+                // Spotify Modal aç/kapa
+                els.headerSpotifyBtn.addEventListener('click', openSpotifyModal);
+                els.bannerSpotifyBtn.addEventListener('click', openSpotifyModal);
+                els.btnInlineOpenSpotify.addEventListener('click', openSpotifyModal);
+                els.btnCloseSpotifyModal.addEventListener('click', closeSpotifyModal);
+                els.btnCancelSpotifyModal.addEventListener('click', closeSpotifyModal);
+                els.spotifyModal.addEventListener('click', (e) => { if (e.target === els.spotifyModal) closeSpotifyModal(); });
+                els.btnStartSpotifyLogin.addEventListener('click', startSpotifyLogin);
+                els.btnDisconnectSpotify.addEventListener('click', () => disconnectSpotify(true));
+                els.btnCopyRedirectUri.addEventListener('click', () => copyToClipboard(els.redirectUriDisplay.value, 'Redirect URI kopyalandı!'));
+                els.btnCopyPythonCmd.addEventListener('click', () => copyToClipboard('python3 -m http.server 8000 --bind 127.0.0.1', 'Komut kopyalandı!'));
+
+                // Başlangıç ekranı yükleme işlemleri
+                els.btnFetchPlaylist.addEventListener('click', fetchSpotifyPlaylistByUrl);
+                els.csvFileInput.addEventListener('change', (e) => handleCsvFile(e.target.files[0]));
+                els.csvDropZone.addEventListener('dragover', (e) => { e.preventDefault(); els.csvDropZone.classList.add('border-app-green'); });
+                els.csvDropZone.addEventListener('dragleave', () => els.csvDropZone.classList.remove('border-app-green'));
+                els.csvDropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    els.csvDropZone.classList.remove('border-app-green');
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleCsvFile(e.dataTransfer.files[0]);
+                });
+
+                els.btnStartJsonImport.addEventListener('click', () => els.jsonFileInput.click());
+                els.btnTierJsonImport.addEventListener('click', () => els.jsonFileInput.click());
+                els.jsonFileInput.addEventListener('change', (e) => handleJsonBackupFile(e.target.files[0]));
+
+                els.btnLoadSample.addEventListener('click', () => {
+                    loadWorkspace({
+                        playlistName: 'Trip-Hop Örnek Liste',
+                        tracks: SAMPLE_TRACKS,
+                        playMode: 'sequential',
+                        shuffleOrder: generateShuffleOrder(SAMPLE_TRACKS.length)
+                    }, true);
+                    showToast('8 şarkılık örnek liste yüklendi!', 'success');
+                });
+
+                // Sekmeler ve üst butonlar
+                els.tabRateBtn.addEventListener('click', () => switchTab('rate'));
+                els.tabTierBtn.addEventListener('click', () => switchTab('tier'));
+
+                els.btnCopyViewerLink.addEventListener('click', () => {
+                    const viewerUrl = `${window.location.origin}${window.location.pathname}?view=1`;
+                    copyToClipboard(viewerUrl, 'İzleme linki (?view=1) kopyalandı!');
+                });
+
+                els.btnViewerRefresh.addEventListener('click', loadFromFirebaseViewer);
+
+                // Sıfırlama modalı
+                const openResetModal = () => els.resetModal.classList.remove('hidden');
+                els.headerResetBtn.addEventListener('click', openResetModal);
+                els.btnTierReset.addEventListener('click', openResetModal);
+                els.btnCancelReset.addEventListener('click', () => els.resetModal.classList.add('hidden'));
+                els.btnConfirmReset.addEventListener('click', () => {
+                    els.resetModal.classList.add('hidden');
+                    localStorage.removeItem(STORAGE_KEY_STATE);
+                    state.tracks = [];
+                    state.playlistName = '';
+                    state.currentIndex = -1;
+                    state.history = [];
+                    els.rateView.classList.add('hidden');
+                    els.tierView.classList.add('hidden');
+                    els.headerNavWrapper.classList.add('hidden');
+                    els.resumeSessionBanner.classList.add('hidden');
+                    els.startView.classList.remove('hidden');
+                    els.headerSubtitle.textContent = 'Tam Şarkı & Sarma Destekli';
+                    showToast('Liste sıfırlandı.', 'info');
+                });
+
+                // Sıralı / Karışık modu
+                els.btnModeSequential.addEventListener('click', () => {
+                    if (state.playMode === 'sequential') return;
+                    state.playMode = 'sequential';
+                    saveStateLocal();
+                    renderRateView();
+                });
+                els.btnModeShuffle.addEventListener('click', () => {
+                    if (state.playMode === 'shuffle') return;
+                    state.playMode = 'shuffle';
+                    if (!validateShuffleOrder(state.shuffleOrder, state.tracks.length)) {
+                        state.shuffleOrder = generateShuffleOrder(state.tracks.length);
+                    }
+                    saveStateLocal();
+                    renderRateView();
+                });
+                els.btnReshuffle.addEventListener('click', () => {
+                    state.shuffleOrder = generateShuffleOrder(state.tracks.length);
+                    state.currentIndex = findNextUnratedIndex(-1, false);
+                    spotify.currentTrackId = null;
+                    saveStateLocal();
+                    renderRateView();
+                    showToast('Kalan şarkılar yeniden karıştırıldı!', 'info');
+                });
+
+                // 5'li puanlama butonları
+                document.querySelectorAll('button[data-rate]').forEach((btn) => {
+                    btn.addEventListener('click', () => rateCurrentTrack(Number(btn.dataset.rate)));
+                });
+                els.btnUndo.addEventListener('click', undoLastAction);
+                els.btnSkip.addEventListener('click', skipCurrentTrack);
+                els.btnGoTierFromDone.addEventListener('click', () => switchTab('tier'));
+                els.btnReviewSkipped.addEventListener('click', () => {
+                    state.tracks.forEach(t => { if (t.rating === null) t.skipped = false; });
+                    state.currentIndex = findNextUnratedIndex(-1, false);
+                    saveStateLocal();
+                    renderRateView();
+                });
+
+                // SDK Oynatıcı Kontrolleri
+                els.btnPlayPause.addEventListener('click', () => {
+                    if (!spotify.isReady || !spotify.player) return;
+                    const activeTrack = state.tracks[state.currentIndex];
+                    if (activeTrack && spotify.currentTrackId !== activeTrack.trackId) {
+                        playTrackOnSDK(activeTrack);
+                    } else {
+                        spotify.player.togglePlay();
+                    }
+                });
+                els.btnSeekBack.addEventListener('click', () => seekRelative(-10));
+                els.btnSeekForward.addEventListener('click', () => seekRelative(10));
+
+                els.seekBar.addEventListener('input', () => {
+                    spotify.isSeeking = true;
+                    const dur = spotify.durationMs || 0;
+                    const previewMs = (Number(els.seekBar.value) / 1000) * dur;
+                    els.timeElapsed.textContent = formatMs(previewMs);
+                });
+                els.seekBar.addEventListener('change', () => {
+                    const dur = spotify.durationMs || 0;
+                    const targetMs = Math.round((Number(els.seekBar.value) / 1000) * dur);
+                    spotify.isSeeking = false;
+                    if (spotify.isReady && spotify.player) {
+                        spotify.positionMs = targetMs;
+                        spotify.lastSyncTimestamp = Date.now();
+                        spotify.player.seek(targetMs);
+                    }
+                });
+
+                els.volumeSlider.addEventListener('input', () => {
+                    state.volume = Number(els.volumeSlider.value);
+                    if (spotify.isReady && spotify.player) {
+                        spotify.player.setVolume(state.volume / 100);
+                    }
+                    saveStateLocal();
+                });
+
+                document.querySelectorAll('.offset-pill').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        state.startOffsetSec = Number(btn.dataset.offset);
+                        updateOffsetPillsUI();
+                        saveStateLocal();
+                    });
+                });
+
+                els.autoPlayCheckbox.addEventListener('change', () => {
+                    state.autoPlay = els.autoPlayCheckbox.checked;
+                    saveStateLocal();
+                });
+
+                // Tier List kontrolleri
+                els.btnFetchMissingCovers.addEventListener('click', fetchAllMissingCovers);
+                els.btnExportCsv.addEventListener('click', exportCsv);
+                els.btnExportJson.addEventListener('click', exportJson);
+
+                document.querySelectorAll('.copy-tier-btn').forEach((btn) => {
+                    btn.addEventListener('click', () => copyTierLinks(btn.dataset.copyTier));
+                });
+
+                els.tierSearchInput.addEventListener('input', () => {
+                    state.tierSearch = els.tierSearchInput.value;
+                    renderTierList();
+                });
+
+                document.querySelectorAll('.filter-pill').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        state.tierFilter = btn.dataset.filter;
+                        renderTierList();
+                    });
+                });
+
+                // Tier List satır içi delegasyon (puan değiştir / dinle)
+                els.tierTracksContainer.addEventListener('click', (e) => {
+                    const rateBtn = e.target.closest('button[data-row-rate]');
+                    if (rateBtn && !isViewerMode) {
+                        const idx = Number(rateBtn.dataset.trackIdx);
+                        const newRate = Number(rateBtn.dataset.rowRate);
+                        if (state.tracks[idx]) {
+                            state.tracks[idx].rating = newRate;
+                            state.tracks[idx].skipped = false;
+                            saveStateLocal();
+                            triggerCloudSync();
+                            renderTierList();
+                        }
+                        return;
+                    }
+                    const listenBtn = e.target.closest('button[data-listen-idx]');
+                    if (listenBtn && !isViewerMode) {
+                        const idx = Number(listenBtn.dataset.listenIdx);
+                        if (state.tracks[idx]) {
+                            state.currentIndex = idx;
+                            spotify.currentTrackId = null;
+                            switchTab('rate');
+                        }
+                    }
+                });
+
+                // Klavye kısayolları
+                document.addEventListener('keydown', (e) => {
+                    if (isViewerMode) return;
+                    const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+                    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+                    if (!els.spotifyModal.classList.contains('hidden') || !els.resetModal.classList.contains('hidden')) {
+                        if (e.key === 'Escape') {
+                            closeSpotifyModal();
+                            els.resetModal.classList.add('hidden');
+                        }
+                        return;
+                    }
+                    if (state.activeTab !== 'rate' || els.rateView.classList.contains('hidden')) return;
+
+                    if (['1', '2', '3', '4', '5'].includes(e.key)) {
+                        e.preventDefault();
+                        rateCurrentTrack(Number(e.key));
+                    } else if (e.code === 'Space') {
+                        e.preventDefault();
+                        els.btnPlayPause.click();
+                    } else if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        seekRelative(-10);
+                    } else if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        seekRelative(10);
+                    } else if (e.key.toLowerCase() === 's') {
+                        e.preventDefault();
+                        skipCurrentTrack();
+                    } else if (e.key.toLowerCase() === 'z') {
+                        e.preventDefault();
+                        undoLastAction();
+                    }
+                });
+            }
+
+            /* ================================================================
+               13. BAŞLATMA (BOOTSTRAP)
+               ================================================================ */
+            async function init() {
+                bindEvents();
+                updateOffsetPillsUI();
+
+                // İzleme Modu (?view=1)
+                if (isViewerMode) {
+                    els.startView.classList.add('hidden');
+                    els.rateView.classList.add('hidden');
+                    els.headerNavWrapper.classList.add('hidden');
+                    els.headerSpotifyBtn.classList.add('hidden');
+                    els.ownerTierActions.classList.add('hidden');
+                    els.tierRowActionHint.classList.add('hidden');
+                    els.viewerHeaderControls.classList.remove('hidden');
+                    els.viewerHeaderControls.classList.add('flex');
+                    els.tierView.classList.remove('hidden');
+                    await loadFromFirebaseViewer();
+                    return;
+                }
+
+                // Spotify OAuth Callback veya kayıtlı token kontrolü
+                const fromCallback = await handleSpotifyCallback();
+                if (fromCallback || loadStoredAuth()) {
+                    initSpotifySDK();
+                } else {
+                    updateSpotifyStatusUI();
+                }
+
+                // Kayıtlı oturum varsa başlangıç ekranında "Kaldığın Yerden Devam Et" göster
+                const saved = loadStateLocal();
+                if (saved) {
+                    state.startOffsetSec = Number(saved.startOffsetSec) || 0;
+                    state.autoPlay = saved.autoPlay !== false;
+                    state.volume = Number(saved.volume) || 70;
+                    els.autoPlayCheckbox.checked = state.autoPlay;
+                    els.volumeSlider.value = String(state.volume);
+                    updateOffsetPillsUI();
+
+                    const ratedCount = saved.tracks.filter(t => t.rating >= 1 && t.rating <= 5).length;
+                    els.resumePlaylistTitle.textContent = saved.playlistName || 'Kayıtlı Playlist';
+                    els.resumePlaylistStats.textContent = `${ratedCount} / ${saved.tracks.length} şarkı puanlandı`;
+                    els.resumeSessionBanner.classList.remove('hidden');
+
+                    els.btnResumeSession.addEventListener('click', () => {
+                        loadWorkspace(saved, false);
+                    });
+                }
+            }
+
+            init();
+        })();
+    </script>
+</body>
+</html>
